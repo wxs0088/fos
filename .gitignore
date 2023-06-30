@@ -1,6 +1,5 @@
 fssource*/
 kernelsource*/
 linux-*/
-dist/
 buildroot*.tar.bz2
 linux-*.tar.xz
