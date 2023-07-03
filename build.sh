@@ -257,7 +257,7 @@ function buildFilesystem() {
             status=$?
             ;;
         x86)
-            make ARCH=i486 >buildroot$arch.log 2>&1
+            make ARCH=i486
             status=$?
             ;;
         arm64)
