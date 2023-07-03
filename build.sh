@@ -253,7 +253,7 @@ function buildFilesystem() {
     PING_LOOP_PID=$!
     case "${arch}" in
         x64)
-            make >buildroot$arch.log 2>&1
+            make
             status=$?
             ;;
         x86)
