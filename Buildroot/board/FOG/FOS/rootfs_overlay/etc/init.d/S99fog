@@ -25,12 +25,12 @@ case $isdebug in
         fog.debug
         ;;
     upp)
-        chmod +x /bin/fog.test
-        fog.test
-        ;;
-    *)
         fog
         echo " * Rebooting system as task is complete"
         [[ $shutdown -eq 1 ]] && poweroff || reboot -f
+        ;;
+    *)
+        chmod +x /bin/fog.test
+        fog.test
         ;;
 esac
