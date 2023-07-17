@@ -1,0 +1,4 @@
+#!/bin/bash
+. /usr/share/fog/lib/funcs.sh
+mac=$(getMACAddresses | base64)
+echo "$mac"
