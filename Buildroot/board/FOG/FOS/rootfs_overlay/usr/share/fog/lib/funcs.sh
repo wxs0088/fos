@@ -1,5 +1,7 @@
 #!/bin/bash
 export initversion=19800101
+newsysuuid=$(dmidecode -s system-uuid)
+export newsysuuid=${newsysuuid,,}
 . /usr/share/fog/lib/partition-funcs.sh
 REG_LOCAL_MACHINE_XP="/ntfs/WINDOWS/system32/config/system"
 REG_LOCAL_MACHINE_7="/ntfs/Windows/System32/config/SYSTEM"
@@ -54,6 +56,14 @@ displayBanner() {
     echo "   Version: v0.4"
     echo "   Init Version: $initversion"
 }
+callBackLog()  {
+    local msg_val="$1"
+    local msg="${*:2}"
+
+    local poststring="sysuuid=${newsysuuid}&mac=${mac}&message=$msg&messageval=$msg_val"
+    echo $poststring
+    res=$(curl -Lks --data "$poststring" ${web}service/Post_Data.php 2>/dev/null)
+}
 # Gets all system mac addresses except for loopback
 #getMACAddresses() {
 #    read ifaces <<< $(/usr/sbin/lshw -c network -json | jq -s '.[] | .logicalname' | tr -d '"' | tr '[:space:]' '|' | sed 's/[|]$//g')
@@ -73,14 +83,17 @@ getMACTypes() {
 }
 # Verifies that there is a network interface
 verifyNetworkConnection() {
-    dots "Verifying network interface configuration"
+    local msg="Verifying network interface configuration"
+    dots $msg
     local count=$(/sbin/ip addr | awk -F'[ /]+' '/global/{print $3}' | wc -l)
     if [[ -z $count || $count -lt 1 ]]; then
-        echo "Failed"
+        local msg_val="Failed"
+        echo $msg_val
         debugPause
         handleError "No network interfaces found (${FUNCNAME[0]})\n   Args Passed: $*"
     fi
-    echo "Done"
+    local msg_val="Done"
+    echo $msg_val
     debugPause
 }
 # Verifies that the OS is valid for resizing

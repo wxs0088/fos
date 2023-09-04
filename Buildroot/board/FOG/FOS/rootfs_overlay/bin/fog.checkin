@@ -42,11 +42,17 @@ verifyNetworkConnection
 dots "Checking Operating System"
 [[ -z $deployed ]] && determineOS "$osid"
 echo "$osname"
-dots "Checking CPU Cores"
+msg="Checking CPU Cores"
 cores=$(nproc)
-echo "$cores"
-dots "Send method"
-echo "$method"
+msg_val=$cores
+dots $msg
+echo $msg_val
+callBackLog $msg_val $msg
+msg="Send method"
+msg_val=$method
+dots $msg
+echo $msg_val
+callBackLog $msg_val $msg
 blGo=0
 nfsServerName=""
 checkin() {
