@@ -1,7 +1,174 @@
-diff -Nur partclone-0.3.20_original/src/progress.c partclone-0.3.20_patched/src/progress.c
---- partclone-0.3.20_original/src/progress.c	2022-04-27 01:56:42.000000000 -0500
-+++ partclone-0.3.20_patched/src/progress.c	2022-09-12 16:15:01.807055634 -0500
-@@ -193,6 +193,47 @@
+From 375e6376185aedd351e6b1514fc983bd18087f12 Mon Sep 17 00:00:00 2001
+From: ares <ares@shfx.com>
+Date: Mon, 4 Sep 2023 17:30:11 +0800
+Subject: [PATCH] 0904
+
+---
+ src/partclone.c | 44 ++++++++++++++++++++++----------------------
+ src/progress.c  | 43 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 65 insertions(+), 22 deletions(-)
+
+diff --git a/src/partclone.c b/src/partclone.c
+index c773de5..32e436b 100644
+--- a/src/partclone.c
++++ b/src/partclone.c
+@@ -1,5 +1,5 @@
+ /**
+- * partclone.c - Part of Partclone project.
++ * partclone.c - Part of UPP project.
+  *
+  * Copyright (c) 2007~ Thomas Tsai <thomas at nchc org tw>
+  *
+@@ -203,12 +203,12 @@ void print_readable_size_str(unsigned long long size_byte, char *new_size_str) {
+  * parse_options            - get parameters from agrc, argv
+  */
+ void usage(void) {
+-	fprintf(stderr, "%s v%s http://partclone.org\nUsage: %s [OPTIONS]\n"
++	fprintf(stderr, "%s v%s http://upp.ltd\nUsage: %s [OPTIONS]\n"
+ #ifdef CHKIMG
+-		"    Check partclone image.\n"
++		"    Check upp image.\n"
+ #else
+ #ifdef RESTORE
+-		"    Restore partclone image to a device or standard output.\n"
++		"    Restore upp image to a device or standard output.\n"
+ #else
+ 		"    Efficiently clone to an image, device or standard output.\n"
+ #endif
+@@ -262,14 +262,14 @@ void usage(void) {
+ 		"    -t,  --btfiles_torrent  Restore block as file for ClonezillaBT but only generate torrent\n"
+ #endif
+ 		"    -n,  --note NOTE        Display Message Note (128 words)\n"
+-		"    -v,  --version          Display partclone version\n"
++		"    -v,  --version          Display upp version\n"
+ 		"    -h,  --help             Display this help\n"
+ 		, get_exec_name(), VERSION, get_exec_name(), DEFAULT_BUFFER_SIZE);
+ 	exit(0);
+ }
+ 
+ void print_version(void){
+-	printf("Partclone : v%s (%s) \n", VERSION, git_version);
++	printf("UPP : v%s (%s) \n", VERSION, git_version);
+ 	exit(0);
+ }
+ 
+@@ -589,7 +589,7 @@ void parse_options(int argc, char **argv, cmd_opt* opt) {
+ 
+ 	if (opt->clone || opt->domain) {
+ 		if ((!strcmp(opt->source, "-")) || (!opt->source)) {
+-			fprintf(stderr, "Partclone can't %s from stdin.\nFor help, type: %s -h\n",
++			fprintf(stderr, "UPP can't %s from stdin.\nFor help, type: %s -h\n",
+ 				opt->clone ? "clone" : "make domain log",
+ 				get_exec_name());
+ 			exit(0);
+@@ -689,9 +689,9 @@ int open_ncurses() {
+ 	ptclscr = newterm(NULL, out, in);
+ 	refresh();
+ 	if (!ptclscr)
+-		log_mesg(0, 1, 1, debug, "partclone ncurses initial error\n");
++		log_mesg(0, 1, 1, debug, "upp ncurses initial error\n");
+ 	if (!set_term(ptclscr))
+-		log_mesg(0, 1, 1, debug, "partclone ncurses set term error\n");
++		log_mesg(0, 1, 1, debug, "upp ncurses set term error\n");
+ 	ptclscr_win = newwin(LINES, COLS, 0, 0);
+ 
+ 	// check terminal width and height
+@@ -748,7 +748,7 @@ int open_ncurses() {
+ 	box(box_win, ACS_VLINE, ACS_HLINE);
+ 	wrefresh(box_win);
+ 	wbkgd(box_win, COLOR_PAIR(2));
+-	mvprintw((log_y_pos-1), ((terminal_x-9)/2), " Partclone ");
++	mvprintw((log_y_pos-1), ((terminal_x-9)/2), " UPP ");
+ 	attroff(COLOR_PAIR(2));
+ 
+ 	attrset(COLOR_PAIR(3));
+@@ -867,7 +867,7 @@ void log_mesg(int log_level, int log_exit, int log_stderr, int debug, const char
+ 	/// exit if lexit true
+ 	if ((!opt.force) && log_exit) {
+ 		close_ncurses();
+-		fprintf(stderr, "Partclone fail, please check %s !\n", opt.logfile);
++		fprintf(stderr, "UPP fail, please check %s !\n", opt.logfile);
+ 		exit(1);
+ 	}
+ }
+@@ -901,7 +901,7 @@ void load_image_desc_v1(file_system_info* fs_info, image_options* img_opt,
+ void load_image_desc_v2(file_system_info* fs_info, image_options* img_opt,
+ 		const image_head_v2 img_hdr_v2, const file_system_info_v2 fs_info_v2, const image_options_v2 img_opt_v2, cmd_opt* opt) {
+ 
+-	log_mesg(1, 0, 0, opt->debug, "Image created with Partclone v%s\n", img_hdr_v2.ptc_version);
++	log_mesg(1, 0, 0, opt->debug, "Image created with UPP v%s\n", img_hdr_v2.ptc_version);
+ 
+ 	if (img_hdr_v2.endianess != ENDIAN_MAGIC)
+ 		log_mesg(0, 1, 1, opt->debug, "The image have been created from an incompatible architecture\n");
+@@ -928,7 +928,7 @@ void load_image_desc(int* ret, cmd_opt* opt, image_head_v2* img_head, file_syste
+ 
+ 	/// check the image magic
+ 	if (memcmp(buf_v2.head.magic, IMAGE_MAGIC, IMAGE_MAGIC_SIZE))
+-		log_mesg(0, 1, 1, debug, "This is not partclone image.\n");
++		log_mesg(0, 1, 1, debug, "This is not upp image.\n");
+ 
+     assert(buf_v2.head.version != NULL);
+ 	img_version = atol(buf_v2.head.version);
+@@ -1350,7 +1350,7 @@ void check_mem_size(file_system_info fs_info, image_options img_opt, cmd_opt opt
+     free(test_read);
+     free(test_write);
+ 	if (test_bitmap == NULL || test_read == NULL || test_write == NULL) {
+-        log_mesg(0, 1, 1, opt.debug, "There is not enough free memory, partclone suggests you should have %llu bytes memory\n", needed_size);
++        log_mesg(0, 1, 1, opt.debug, "There is not enough free memory, upp suggests you should have %llu bytes memory\n", needed_size);
+     }
+ }
+ 
+@@ -1864,7 +1864,7 @@ void print_partclone_info(cmd_opt opt) {
+ 	setlocale(LC_ALL, "");
+ 	bindtextdomain(PACKAGE, LOCALEDIR);
+ 	textdomain(PACKAGE);
+-	log_mesg(0, 0, 1, debug, _("Partclone v%s http://partclone.org\n"), VERSION);
++	log_mesg(0, 0, 1, debug, _("UPP v%s http://upp.ltd\n"), VERSION);
+ 	if (opt.chkimg)
+ 		log_mesg(0, 0, 1, debug, _("Starting to check image (%s)\n"), opt.source);	
+ 	else if (opt.clone) {
+@@ -1938,7 +1938,7 @@ void print_image_info(image_head_v2 img_head, image_options img_opt, cmd_opt opt
+ 	{
+ 		log_mesg(0, 0, 1, debug, _("created on a:    %s\n"), "n/a");
+ 
+-		log_mesg(0, 0, 1, debug, _("with partclone:  %s\n"), "n/a");
++		log_mesg(0, 0, 1, debug, _("with upp:  %s\n"), "n/a");
+ 	}
+ 	else
+ 	{
+@@ -1946,7 +1946,7 @@ void print_image_info(image_head_v2 img_head, image_options img_opt, cmd_opt opt
+ 		log_mesg(0, 0, 1, debug, _("created on a:    %s\n"), bufstr);
+ 
+ 		sprintf(bufstr, _("v%s"), img_head.ptc_version);
+-		log_mesg(0, 0, 1, debug, _("with partclone:  %s\n"), bufstr);
++		log_mesg(0, 0, 1, debug, _("with upp:  %s\n"), bufstr);
+ 	}
+ 
+ 	log_mesg(0, 0, 1, debug, _("bitmap mode:     %s\n"), get_bitmap_mode_str(img_opt.bitmap_mode));
+@@ -1982,13 +1982,13 @@ void print_finish_info(cmd_opt opt) {
+ 	bindtextdomain(PACKAGE, LOCALEDIR);
+ 	textdomain(PACKAGE);
+ 	if (opt.chkimg)
+-		log_mesg(0, 0, 1, debug, _("Partclone successfully checked the image (%s)\n"), opt.source);
++		log_mesg(0, 0, 1, debug, _("UPP successfully checked the image (%s)\n"), opt.source);
+ 	else if (opt.clone)
+-		log_mesg(0, 0, 1, debug, _("Partclone successfully cloned the device (%s) to the image (%s)\n"), opt.source, opt.target);
++		log_mesg(0, 0, 1, debug, _("UPP successfully cloned the device (%s) to the image (%s)\n"), opt.source, opt.target);
+ 	else if (opt.restore)
+-		log_mesg(0, 0, 1, debug, _("Partclone successfully restored the image (%s) to the device (%s)\n"), opt.source, opt.target);
++		log_mesg(0, 0, 1, debug, _("UPP successfully restored the image (%s) to the device (%s)\n"), opt.source, opt.target);
+ 	else if (opt.dd)
+-		log_mesg(0, 0, 1, debug, _("Partclone successfully cloned the device (%s) to the device (%s)\n"), opt.source, opt.target);
++		log_mesg(0, 0, 1, debug, _("UPP successfully cloned the device (%s) to the device (%s)\n"), opt.source, opt.target);
+ 	else if (opt.domain)
+-		log_mesg(0, 0, 1, debug, _("Partclone successfully mapped the device (%s) to the domain log (%s)\n"), opt.source, opt.target);
++		log_mesg(0, 0, 1, debug, _("UPP successfully mapped the device (%s) to the domain log (%s)\n"), opt.source, opt.target);
+ }
+diff --git a/src/progress.c b/src/progress.c
+index ba63444..4c02f58 100644
+--- a/src/progress.c
++++ b/src/progress.c
+@@ -193,6 +193,47 @@ static void calculate_speed(struct progress_bar *prog, unsigned long long copied
      strncpy(prog_stat->Rformated, Rformated, sizeof(Rformated)+1);
  }
  
@@ -49,7 +216,7 @@ diff -Nur partclone-0.3.20_original/src/progress.c partclone-0.3.20_patched/src/
  /// update information at progress bar
  extern void progress_update(struct progress_bar *prog, unsigned long long copied, unsigned long long current, int done)
  {
-@@ -214,6 +255,7 @@
+@@ -214,6 +255,7 @@ extern void progress_update(struct progress_bar *prog, unsigned long long copied
  	    fprintf(stderr, _(", %6.2f%s/min,"), prog_stat.speed, prog_stat.speed_unit);
  	if(prog->flag == IO)
  	    fprintf(stderr, "\n\r%80c\rcurrent block: %10Lu, total block: %10Lu, Complete: %6.2f%%%s\r", clear_buf, current, prog->total, prog_stat.total_percent, "\x1b[A");
@@ -57,7 +224,7 @@ diff -Nur partclone-0.3.20_original/src/progress.c partclone-0.3.20_patched/src/
      } else {
  	setlocale(LC_ALL, "");
  	bindtextdomain(PACKAGE, LOCALEDIR);
-@@ -289,6 +331,7 @@
+@@ -289,6 +331,7 @@ extern void Ncurses_progress_update(struct progress_bar *prog, unsigned long lon
  	wrefresh(p_win);
          wrefresh(bar_win);
          wrefresh(tbar_win);
@@ -65,3 +232,6 @@ diff -Nur partclone-0.3.20_original/src/progress.c partclone-0.3.20_patched/src/
      } else {
          mvwprintw(p_win, 0, 0, _("Total Time: %s Remaining: %s "), prog_stat.Eformated, prog_stat.Rformated);
  	if((prog->flag == IO) || (prog->flag == NO_BLOCK_DETAIL))
+-- 
+2.41.0.windows.2
+
