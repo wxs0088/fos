@@ -2257,6 +2257,9 @@ restorePartitionTablesAndBootLoaders() {
     local strdots=""
     if [[ $nombr -eq 1 ]]; then
         echo " * Skipping partition tables and MBR"
+        msg="Skipping partition tables and MBR"
+        msg_val="T"
+        callBackLog $msg_val $msg
         debugPause
         return
     fi
@@ -2557,6 +2560,9 @@ prepareResizeDownloadPartitions() {
     [[ -z $imgPartitionType ]] && handleError "No image partition type  passed (${FUNCNAME[0]})\n   Args Passed: $*"
     if [[ $nombr -eq 1 ]]; then
         echo -e " * Skipping partition preperation\n"
+        msg="Skipping partition preperation"
+        msg_val="T"
+        callBackLog $msg_val $msg
         debugPause
         return
     fi
@@ -2564,14 +2570,18 @@ prepareResizeDownloadPartitions() {
     local do_fill=0
     fillDiskWithPartitionsIsOK "$disk" "$imagePath" "$disk_number"
     majorDebugEcho "Filling disk = $do_fill"
-    dots "Attempting to expand/fill partitions"
+    msg="Attempting to expand/fill partitions"
+    dots $msg
     if [[ $do_fill -eq 0 ]]; then
-        echo "Failed"
+        msg_val="Failed"
+        echo "$msg_val"
         debugPause
         handleError "Fatal Error: Could not resize partitions (${FUNCNAME[0]})\n   Args Passed: $*"
     fi
     fillDiskWithPartitions "$disk" "$imagePath" "$disk_number"
-    echo "Done"
+    msg_val="Done"
+    echo "$msg_val"
+    callBackLog $msg_val $msg
     debugPause
     runPartprobe "$disk"
 }

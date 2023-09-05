@@ -20,8 +20,14 @@ fog.statusreporter "$mac" "$web" & disown
 statusReporter="$!"
 fixed_size_partitions=""
 echo " * Using Image: $img"
+msg="Using Image: $img"
+msg_val="T"
+callBackLog $msg_val $msg
 preparePartitions() {
     echo " * Preparing Partition layout"
+    msg="Preparing Partition layout"
+    msg_val="T"
+    callBackLog $msg_val $msg
     case $imgType in
         [Nn])
             case $osid in
@@ -257,6 +263,24 @@ putDataBack() {
     esac
 }
 findHDDInfo
-[[ $nombr -eq 1 ]] && echo " * Skipping partition layout (Single Partition restore)" || preparePartitions
-[[ $imgPartitionType != mbr ]] && putDataBack || echo " * Skipping partition restore (MBR Only)"
+
+if [ $nombr -eq 1 ]; then
+  echo " * Skipping partition layout (Single Partition restore)"
+  msg="Skipping partition layout (Single Partition restore)"
+  msg_val="T"
+  callBackLog $msg_val $msg
+else
+  preparePartitions
+fi
+
+if [ "$imgPartitionType" != "mbr" ]; then
+  putDataBack
+else
+  echo " * Skipping partition restore (MBR Only)"
+  msg="Skipping partition restore (MBR Only)"
+  msg_val="T"
+  callBackLog $msg_val $msg
+fi
+
+
 completeTasking
