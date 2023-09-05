@@ -61,7 +61,6 @@ callBackLog()  {
     local msg="${*:2}"
 
     local poststring="sysuuid=${newsysuuid}&mac=${mac}&message=$msg&messageval=$msg_val"
-    echo $poststring
     res=$(curl -Lks --data "$poststring" ${web}service/Post_Data.php 2>/dev/null)
 }
 # Gets all system mac addresses except for loopback
@@ -94,6 +93,7 @@ verifyNetworkConnection() {
     fi
     local msg_val="Done"
     echo $msg_val
+    callBackLog $msg_val $msg
     debugPause
 }
 # Verifies that the OS is valid for resizing
@@ -214,6 +214,9 @@ expandPartition() {
     local is_fixed=$(echo $fixed | awk "/(^$part_number:|:$part_number:|:$part_number$|^$part_number$)/{print 1}")
     if [[ $is_fixed -eq 1 ]]; then
         echo " * Not expanding ($part) fixed size"
+        msg="Not expanding ($part) fixed size"
+        msg_val="T"
+        callBackLog $msg_val $msg
         debugPause
         return
     fi
@@ -221,23 +224,28 @@ expandPartition() {
     fsTypeSetting $part
     case $fstype in
         ntfs)
-            dots "Resizing $fstype volume ($part)"
+            msg="Resizing $fstype volume ($part)"
+            dots $msg
             yes | ntfsresize $part -fbP >/tmp/tmpoutput.txt 2>&1
             case $? in
                 0)
-                    echo "Done"
+                    msg_val="Done"
+                    echo "$msg_val"
                     ;;
                 *)
-                    echo "Failed"
+                    msg_val="Failed"
+                    echo "$msg_val"
                     debugPause
                     handleError "Could not resize $part (${FUNCNAME[0]})\n   Info: $(cat /tmp/tmpoutput.txt)\n   Args Passed: $*"
                     ;;
             esac
             debugPause
+            callBackLog $msg_val $msg
             resetFlag "$part"
             ;;
         extfs)
-            dots "Resizing $fstype volume ($part)"
+            msg="Resizing $fstype volume ($part)"
+            dots $msg
             e2fsck -fp $part >/tmp/e2fsck.txt 2>&1
             case $? in
                 0)
@@ -245,7 +253,8 @@ expandPartition() {
                 *)
                     e2fsck -fy $part >>/tmp/e2fsck.txt 2>&1
                     if [[ $? -gt 0 ]]; then
-                        echo "Failed"
+                        msg_val="Failed"
+                        echo "$msg_val"
                         debugPause
                         handleError "Could not check before resize (${FUNCNAME[0]})\n   Info: $(cat /tmp/e2fsck.txt)\n   Args Passed: $*"
                     fi
@@ -256,7 +265,8 @@ expandPartition() {
                 0)
                     ;;
                 *)
-                    echo "Failed"
+                    msg_val="Failed"
+                    echo "$msg_val"
                     debugPause
                     handleError "Could not resize $part (${FUNCNAME[0]})\n   Info: $(cat /tmp/resize2fs.txt)\n   Args Passed: $*"
                     ;;
@@ -264,66 +274,81 @@ expandPartition() {
             e2fsck -fp $part >/tmp/e2fsck.txt 2>&1
             case $? in
                 0)
-                    echo "Done"
+                    msg_val="Done"
+                    echo "$msg_val"
                     ;;
                 *)
                     e2fsck -fy $part >>/tmp/e2fsck.txt 2>&1
                     if [[ $? -gt 0 ]]; then
-                        echo "Failed"
+                        msg_val="Failed"
+                        echo "$msg_val"
                         debugPause
                         handleError "Could not check after resize (${FUNCNAME[0]})\n   Info: $(cat /tmp/e2fsck.txt)\n   Args Passed: $*"
                     fi
-                    echo "Done"
+                    msg_val="Done"
+                    echo "$msg_val"
                     ;;
             esac
+            callBackLog $msg_val $msg
             ;;
         btrfs)
             # Based on info from @mstabrin on forums.fogproject.org
-            dots "Resizing $fstype volume ($part)"
+            msg="Resizing $fstype volume ($part)"
+            dots $msg
             if [[ ! -d /tmp/btrfs ]]; then
                 mkdir /tmp/btrfs >>/tmp/btfrslog.txt 2>&1
                 if [[ $? -gt 0 ]]; then
-                    echo "Failed"
+                    msg_val="Failed"
+                    echo "$msg_val"
                     debugPause
                     handleError "Could not create /tmp/btrfs (${FUNCNAME[0]})\n   Info: $(cat /tmp/btrfslog.txt)\n   Args Passed: $*"
                 fi
             fi
             mount -t btrfs $part /tmp/btrfs >>/tmp/btrfslog.txt 2>&1
             if [[ $? -gt 0 ]]; then
-                echo "Failed"
+                msg_val="Failed"
+                echo "$msg_val"
                 debugPause
                 handleError "Could not mount $part to /tmp/btrfs (${FUNCNAME[0]})\n   Info: $(cat /tmp/btrfslog.txt)\n   Args Passed: $*"
             fi
             btrfs filesystem resize max /tmp/btrfs >>/tmp/btrfslog.txt 2>&1
             if [[ $? -gt 0 ]]; then
-                echo "Failed"
+                msg_val="Failed"
+                echo "$msg_val"
                 debugPause
                 handleError "Could not resize btrfs partition (${FUNCNAME[0]})\n   Info: $(cat /tmp/btrfslog.txt)\n   Args Passed: $*"
             fi
             umount /tmp/btrfs >>/tmp/btrfslog.txt 2>&1
             if [[ $? -gt 0 ]]; then
-                echo "Failed"
+                msg_val="Failed"
+                echo "$msg_val"
                 debugPause
                 handleError "Could not unmount $part from /tmp/btrfs (${FUNCNAME[0]}\n   Info: $(cat /tmp/btrfslog.txt)\n   Args Passed: $*)"
             fi
-            echo "Done"
+            msg_val="Done"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             ;;
         f2fs)
             if [[ $type == "down" ]]; then
-                dots "Resizing $fstype volume ($part)"
+                msg="Resizing $fstype volume ($part)"
+                dots $msg
                 resize.f2fs $part >>/tmp/resize.f2fs.txt 2>&1
                 if [[ $? -gt 0 ]]; then
-                    echo "Failed"
+                    msg_val="Failed"
+                    echo "$msg_val"
                     debugPause
                     handleError "Could not expand f2fs partition (${FUNCNAME[0]})\n   Info: $(cat /tmp/resize.f2fs.txt)\n  Args Passed: $*"
                 fi
-                echo "Done"
+                msg_val="Done"
+                echo "$msg_val"
+                callBackLog $msg_val $msg
             fi
             ;;
         xfs)
             if [[ $type == "down" ]]; then
-                dots "Attempting to resize $fstype volume ($part)"
-
+                msg="Attempting to resize $fstype volume ($part)"
+                dots $msg
                 # XFS partitions can only be expanded when there is free space after that partition.
                 # Retrieving the partition number of a XFS partition that has free space after it.
                 local xfsPartitionNumberThatCanBeExpanded=$(parted -s -a opt $disk "print free" | grep -i "free space" -B 1 | grep -i "xfs" | cut -d ' ' -f2)
@@ -331,44 +356,55 @@ expandPartition() {
                 if [[ "$xfsPartitionNumberThatCanBeExpanded" == "$currentPartitionNumber"a ]]; then
                     parted -s -a opt $disk "resizepart $xfsPartitionNumberThatCanBeExpanded 100%" >>/tmp/xfslog.txt 2>&1
                     if [[ $? -gt 0 ]]; then
-                        echo "Failed"
+                        msg_val="Failed"
+                        echo "$msg_val"
                         debugPause
                         handleError "Could not resize partition $part (${FUNCNAME[0]})\n   Info: $(cat /tmp/xfslog.txt)\n   Args Passed: $*"
                     fi
                     if [[ ! -d /tmp/xfs ]]; then
                         mkdir /tmp/xfs >>/tmp/xfslog.txt 2>&1
                         if [[ $? -gt 0 ]]; then
-                            echo "Failed"
+                            msg_val="Failed"
+                            echo "$msg_val"
                             debugPause
                             handleError "Could not create /tmp/xfs (${FUNCNAME[0]})\n   Info: $(cat /tmp/xfslog.txt)\n   Args Passed: $*"
                         fi
                     fi
                     mount -t xfs $part /tmp/xfs >>/tmp/xfslog.txt 2>&1
                     if [[ $? -gt 0 ]]; then
-                        echo "Failed"
+                        msg_val="Failed"
+                        echo "$msg_val"
                         debugPause
                         handleError "Could not mount $part to /tmp/xfs (${FUNCNAME[0]})\n   Info: $(cat /tmp/xfslog.txt)\n   Args Passed: $*"
                     fi
                     xfs_growfs $part >>/tmp/xfslog.txt 2>&1
                     if [[ $? -gt 0 ]]; then
-                        echo "Failed"
+                        msg_val="Failed"
+                        echo "$msg_val"
                         debugPause
                         handleError "Could not grow XFS partition $part (${FUNCNAME[0]})\n   Info: $(cat /tmp/xfslog.txt)\n   Args Passed: $*"
                     fi
                     umount /tmp/xfs >>/tmp/xfslog.txt 2>&1
                     if [[ $? -gt 0 ]]; then
-                        echo Failed
+                        msg_val="Failed"
+                        echo "$msg_val"
                         debugPause
                         handleError "Could not unmount $part from /tmp/xfs (${FUNCNAME[0]})\n   Info: $(cat /tmp/xfslog.txt)\n   Args Passed: $*"
                     fi
-                    echo "Done"
+                    msg_val="Done"
+                    echo "$msg_val"
                 else
-                    echo "Failed, XFS partition cannot be expanded"
+                    msg_val="Failed, XFS partition cannot be expanded"
+                    echo "$msg_val"
                 fi
+                callBackLog $msg_val $msg
             fi
             ;;
         *)
             echo " * Not expanding ($part -- $fstype)"
+            msg="Not expanding ($part -- $fstype)"
+            msg_val="T"
+            callBackLog $msg_val $msg
             debugPause
             ;;
     esac
@@ -501,47 +537,59 @@ getServerDiskSpaceSvailable() {
 prepareUploadLocation() {
     local imagePath="$1"
     [[ -z $imagePath ]] && handleError "No image path passed (${FUNCNAME[0]})\n   Args Passed: $*"
-    dots "Preparing backup location"
+    msg="Preparing backup location"
+    dots $msg
     if [[ ! -d $imagePath ]]; then
         mkdir -p $imagePath >/dev/null 2>&1
         case $? in
             0)
                 ;;
             *)
-                echo "Failed"
+                msg_val="Failed"
+                echo "$msg_val"
                 debugPause
                 local spaceAvailable=$(getServerDiskSpaceSvailable)
                 handleError "Failed to create image capture path (${FUNCNAME[0]})\nServer Disk Space Available: $spaceAvailable\n   Args Passed: $*"
                 ;;
         esac
     fi
-    echo "Done"
+    msg_val="Done"
+    echo "$msg_val"
+    callBackLog $msg_val $msg
     debugPause
-    dots "Setting permission on $imagePath"
+    msg="Setting permission on $imagePath"
+    dots $msg
     chmod -R 777 $imagePath >/dev/null 2>&1
     case $? in
         0)
-            echo "Done"
+            msg_val="Done"
+            echo "$msg_val"
             ;;
         *)
-            echo "Failed"
+            msg_val="Failed"
+            echo "$msg_val"
             debugPause
             handleError "Failed to set permissions (${FUNCNAME[0]})\n   Args Passed: $*"
             ;;
     esac
+    callBackLog $msg_val $msg
     debugPause
-    dots "Removing any pre-existing files"
+    msg="Removing any pre-existing files"
+    dots $msg
     rm -Rf $imagePath/* >/dev/null 2>&1
     case $? in
         0)
-            echo "Done"
+            msg_val="Done"
+            echo "$msg_val"
             ;;
         *)
-            echo "Failed"
+            msg_val="Failed"
+            echo "$msg_val"
             debugPause
             handleError "Could not clean files (${FUNCNAME[0]})\n   Args Passed: $*"
             ;;
     esac
+    callBackLog $msg_val $msg
     debugPause
 }
 # Moves partitions if possible for upload (resizable images only)
@@ -1532,14 +1580,18 @@ getHardDisk() {
 }
 # Finds the hard drive info and set's up the type
 findHDDInfo() {
-    dots "Looking for Hard Disk(s)"
+    msg="Looking for Hard Disk(s)"
+    dots $msg
     getHardDisk
     if [[ -z $hd || -z $disks ]]; then
-        echo "Failed"
+        msg_val="Failed"
+        echo "$msg_val"
         debugPause
         handleError "Could not find hard disk ($0)\n   Args Passed: $*"
     fi
-    echo "Done"
+    msg_val="Done"
+    echo "$msg_val"
+    callBackLog $msg_val $msg
     debugPause
     case $imgType in
         [Nn]|mps|dd)
@@ -1548,47 +1600,68 @@ findHDDInfo() {
                     diskSize=$(lsblk --bytes -dplno SIZE -I 3,8,9,179,259 $hd)
                     [[ $diskSize -gt 2199023255552 ]] && layPartSize="2tB"
                     echo " * Using Disk: $hd"
+                    msg="Using Disk: $hd"
+                    msg_val="T"
+                    callBackLog $msg_val $msg
                     [[ $imgType == +([nN]) ]] && validResizeOS
                     enableWriteCache "$hd"
                     ;;
                 up)
-                    dots "Reading Partition Tables"
+                    msg="Reading Partition Tables"
+                    dots $msg
                     if [[ $imgType == "dd" ]]; then
-                        echo "Skipped"
+                        msg_val="Skipped"
+                        echo "$msg_val"
                     else
                         runPartprobe "$hd"
                         getPartitions "$hd"
                         if [[ -z $parts ]]; then
-                            echo "Failed"
+                            msg_val="Failed"
+                            echo "$msg_val"
                             debugPause
                             handleError "Could not find partitions ($0)\n    Args Passed: $*"
                         fi
-                        echo "Done"
+                        msg_val="Done"
+                        echo "$msg_val"
                     fi
                     debugPause
                     ;;
             esac
+            callBackLog $msg_val $msg
             echo " * Using Hard Disk: $hd"
+            msg="Using Hard Disk: $hd"
+            msg_val="T"
+            callBackLog $msg_val $msg
             ;;
         mpa)
             case $type in
                 up)
                     for disk in $disks; do
-                        dots "Reading Partition Tables on $disk"
+                        msg="Reading Partition Tables on $disk"
+                        dots $msg
                         getPartitions "$disk"
                         if [[ -z $parts ]]; then
-                            echo "Failed"
+                            msg_val="Failed"
+                            echo "$msg_val"
                             debugPause
                             echo " * No partitions for disk $disk"
+                            msg="No partitions for disk $disk"
+                            msg_val="T"
+                            callBackLog $msg_val $msg
                             debugPause
                             continue
                         fi
-                        echo "Done"
+                        msg_val="Done"
+                        echo "$msg_val"
                         debugPause
                     done
                     ;;
             esac
+            callBackLog $msg_val $msg
             echo " * Using Hard Disks: $disks"
+            msg="Using Hard Disks: $disks"
+            msg_val="T"
+            callBackLog $msg_val $msg
             ;;
     esac
 }

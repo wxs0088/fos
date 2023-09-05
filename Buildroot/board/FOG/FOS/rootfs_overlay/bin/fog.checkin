@@ -39,33 +39,38 @@ case $mc in
 esac
 debugPause
 verifyNetworkConnection
-dots "Checking Operating System"
+msg="Checking Operating System"
+dots $msg
 [[ -z $deployed ]] && determineOS "$osid"
-echo "$osname"
+msg_val=$osname
+echo "$msg_val"
+callBackLog $msg_val $msg
 msg="Checking CPU Cores"
+dots $msg
 cores=$(nproc)
 msg_val=$cores
-dots $msg
-echo $msg_val
+echo "$msg_val"
 callBackLog $msg_val $msg
 msg="Send method"
 msg_val=$method
 dots $msg
-echo $msg_val
+echo "$msg_val"
 callBackLog $msg_val $msg
 blGo=0
 nfsServerName=""
 checkin() {
     local poststring="$1"
     local php_post="$2"
-    dots "Attempting to check in"
+    msg="Attempting to check in"
+    dots $msg
     local count=0
     local res=""
     local waittime=0
     while [[ $res != "##@GO" ]]; do
         res=$(curl -Lks --data "$poststring" ${web}service/$php_post 2>/dev/null)
         if [[ $res != "##@GO" ]]; then
-            echo "Failed"
+            local msg_val="Failed"
+            echo "$msg_val"
             debugPause
             echo -n " * $res (In line for "
             sec2string "$waittime"
@@ -75,7 +80,9 @@ checkin() {
             dots "Attempting to check in"
         fi
     done
-    echo "Done"
+    local msg_val="Done"
+    echo "$msg_val"
+    callBackLog $msg_val $msg
     debugPause
     directive="${res:3}"
     if [[ $directive != GO ]]; then
@@ -86,8 +93,11 @@ checkin() {
         storage="$tmpStorage"
         storageip="$tmpStorageIp"
         nfsServerName="$tmpName"
-        dots "Using Storage Node"
-        echo "$nfsServerName"
+        msg="Using Storage Node"
+        dots $msg
+        msg_val=$nfsServerName
+        echo "$msg_val"
+        callBackLog $msg_val $msg
         debugPause
     fi
 }
