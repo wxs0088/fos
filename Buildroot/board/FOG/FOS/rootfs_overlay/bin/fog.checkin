@@ -39,21 +39,27 @@ case $mc in
 esac
 debugPause
 verifyNetworkConnection
-msg="Checking Operating System"
-dots $msg
+msg_en="Checking Operating System"
+msg="检查操作系统"
+dots $msg_en
 [[ -z $deployed ]] && determineOS "$osid"
-msg_val=$osname
-echo "$msg_val"
-callBackLog $msg_val $msg
-msg="Checking CPU Cores"
-dots $msg
+if [[ $osname == *" "* ]]; then
+  newosname="${osname// /\\ }"
+fi
+msg_val=$newosname
+echo "$osname"
+callBackLog "$msg_val" $msg
+msg_en="Checking CPU Cores"
+msg="检查CPU核数"
+dots $msg_en
 cores=$(nproc)
 msg_val=$cores
 echo "$msg_val"
 callBackLog $msg_val $msg
-msg="Send method"
+msg_en="Send method"
+msg="发送方式"
+dots $msg_en
 msg_val=$method
-dots $msg
 echo "$msg_val"
 callBackLog $msg_val $msg
 blGo=0
@@ -61,8 +67,9 @@ nfsServerName=""
 checkin() {
     local poststring="$1"
     local php_post="$2"
-    msg="Attempting to check in"
-    dots $msg
+    msg_en="Attempting to check in"
+    msg="尝试与服务器通讯"
+    dots $msg_en
     local count=0
     local res=""
     local waittime=0
@@ -71,6 +78,7 @@ checkin() {
         if [[ $res != "##@GO" ]]; then
             local msg_val="Failed"
             echo "$msg_val"
+            callBackLog $msg_val $msg
             debugPause
             echo -n " * $res (In line for "
             sec2string "$waittime"
@@ -93,8 +101,9 @@ checkin() {
         storage="$tmpStorage"
         storageip="$tmpStorageIp"
         nfsServerName="$tmpName"
-        msg="Using Storage Node"
-        dots $msg
+        msg_en="Using Storage Node"
+        msg="使用存储节点"
+        dots $msg_en
         msg_val=$nfsServerName
         echo "$msg_val"
         callBackLog $msg_val $msg

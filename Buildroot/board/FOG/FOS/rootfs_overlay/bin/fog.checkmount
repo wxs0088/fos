@@ -1,8 +1,9 @@
 #!/bin/bash
 sysuuid=$(dmidecode -s system-uuid)
 sysuuid=${sysuuid,,}
-msg="Checking Mounted File System"
-dots $msg
+msg_en="Checking Mounted File System"
+msg="检查挂载的文件系统"
+dots $msg_en
 if [[ ! -f /images/.mntcheck ]]; then
     count=0
     while [[ $blame != '##' ]]; do
@@ -15,6 +16,7 @@ if [[ ! -f /images/.mntcheck ]]; then
             9)
                 msg_val="Failed"
                 echo "$msg_val"
+                callBackLog $msg_val $msg
                 debugPause
                 handleError "Error during failure notification: $blame ($0)\n   Args Passed: $*"
                 ;;
@@ -22,6 +24,7 @@ if [[ ! -f /images/.mntcheck ]]; then
     done
     msg_val="Failed"
     echo "$msg_val"
+    callBackLog $msg_val $msg
     debugPause
     handleError "Could not verify mount point, check if .mntcheck exists ($0)\n   Args Passed: $*"
 fi

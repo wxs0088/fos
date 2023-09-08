@@ -1,11 +1,13 @@
 #!/bin/bash
-msg="Checking img variable is set"
-dots $msg
+msg_en="Checking img variable is set"
+msg="检查 img 变量是否设置"
+dots $msg_en
 if [[ -z $img ]]; then
-    msg_val="Failed"
-    echo "$msg_val"
-    debugPause
-    handleError "Fatal Error: img variable not set. ($0)\n   Args Passed: $*"
+                msg_val="Failed"
+                echo "$msg_val"
+                callBackLog $msg_val $msg
+                debugPause
+                handleError "Fatal Error: img variable not set. ($0)\n   Args Passed: $*"
 fi
 msg_val="Done"
 echo "$msg_val"

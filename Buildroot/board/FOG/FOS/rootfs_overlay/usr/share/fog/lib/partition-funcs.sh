@@ -39,7 +39,10 @@ restoreUUIDInformation() {
     hasGPT "$disk"
     [[ $hasgpt -eq 0 ]] && return
     diskuuid=$(awk '/^label-id: / {print tolower($2)}' $file)
-    dots "Disk UUID being set to"
+    msg_en="Disk UUID being set to"
+    msg="磁盘 UUID 设置为"
+    dots $msg_en
+    callBackLog $diskuuid $msg
     echo $diskuuid
     debugPause
     if [[ -n $diskuuid ]]; then
@@ -53,7 +56,10 @@ restoreUUIDInformation() {
         [[ $is_swap -gt 0 ]] && continue
         partuuid=$(awk -F[,\ ] "match(\$0, /${part_number} : start=.*uuid=([A-Za-z0-9-]+)[,]?.*$/, type){printf(\"%s:%s\", $part_number, tolower(type[1]))}" $file)
         parttype=$(awk -F[,\ ] "match(\$0, /${part_number} : start=.*type=([A-Za-z0-9-]+)[,]?.*$/, type){printf(\"%s:%s\", $part_number, tolower(type[1]))}" $file)
-        dots "Partition type being set to"
+        msg_en="Partition type being set to"
+        msg="分区类型设置为"
+        dots $msg_en
+        callBackLog $parttype $msg
         echo $parttype
         debugPause
         if [[ -n $parttype ]]; then
@@ -62,7 +68,10 @@ restoreUUIDInformation() {
             true
         fi
         [[ ! $? -eq 0 ]] && handleWarning " Failed to set partition type (sgdisk -t) (${FUNCNAME[0]})\n   Args Passed: $*"
-        dots "Partition uuid being set to"
+        msg_en="Partition uuid being set to"
+        msg="分区 uuid 设置为"
+        dots $msg_en
+        callBackLog $partuuid $msg
         echo $partuuid
         debugPause
         if [[ -n $partuuid ]]; then
@@ -630,9 +639,11 @@ saveOriginalPartitions() {
     local disk="$1"
     local imagePath="$2"
     local disk_number="$3"
+    local msg="$4"
     [[ -z $disk ]] && handleError "No disk passed (${FUNCNAME[0]})\n   Args Passed: $*"
     [[ -z $imagePath ]] && handleError "No image path passed (${FUNCNAME[0]})\n   Args Passed: $*"
     [[ -z $disk_number ]] && handleError "No disk number passed (${FUNCNAME[0]})\n   Args Passed: $*"
+    [[ -z $msg ]] && handleError "No msg passed (${FUNCNAME[0]})\n   Args Passed: $*"
     local table_type=""
     getPartitionTableType "$disk"
     case $table_type in
@@ -642,14 +653,20 @@ saveOriginalPartitions() {
             saveSfdiskPartitions "$disk" "$sfdiskoriginalpartitionfilename"
             ;;
         GPT-MBR)
-            echo "Failed"
+            msg_val="Failed"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             debugPause
             runFixparts "$disk"
-            dots "Retrying to save partition table"
-            saveOriginalPartitions "$disk" "$imagePath" "$disk_number"
+            msg_en="Retrying to save partition table"
+            msg="重试保存分区表"
+            dots $msg_en
+            saveOriginalPartitions "$disk" "$imagePath" "$disk_number" $msg
             ;;
         *)
-            echo "Failed"
+            msg_val="Failed"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             debugPause
             handleError "Unexpected partition table type: $table_type (${FUNCNAME[0]})\n   Args Passed: $*"
             ;;

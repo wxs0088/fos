@@ -1,0 +1,5 @@
+#!/bin/bash
+
+echo "中文"
+echo "Chinese"
+echo "ドイツ人"

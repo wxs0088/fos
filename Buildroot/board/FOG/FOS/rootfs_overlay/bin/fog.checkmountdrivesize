@@ -1,35 +1,40 @@
 #!/bin/bash
 
-msg="Checking Server Disk Space"
-dots $msg
+msg_en="Checking Server Disk Space"
+msg="检查服务器磁盘空间"
+dots $msg_en
 getServerDiskSpaceUsage=$(df -h | grep "/images" | sed -n '/dev/{s/  */ /gp}')
 msg_val="Done"
 echo "$msg_val"
 callBackLog $msg_val $msg
 
-msg="Server Disk Size Total"
-dots $msg
+msg_en="Server Disk Size Total"
+msg="服务器磁盘总大小"
+dots $msg_en
 serverDiskSizeTotal=$(echo "$getServerDiskSpaceUsage" | cut -d ' ' -f2)
 msg_val=$serverDiskSizeTotal
 echo "$msg_val"
 callBackLog $msg_val $msg
 
-msg="Server Disk Size Used"
-dots $msg
+msg_en="Server Disk Size Used"
+msg="服务器磁盘已使用大小"
+dots $msg_en
 serverDiskSizeUsed=$(echo "$getServerDiskSpaceUsage" | cut -d ' ' -f3)
 msg_val=$serverDiskSizeUsed
 echo "$msg_val"
 callBackLog $msg_val $msg
 
-msg="Server Disk Size Used Percentage"
-dots $msg
+msg_en="Server Disk Size Used Percentage"
+msg="服务器磁盘已使用百分比"
+dots $msg_en
 serverDiskSizeUsedPercent=$(echo "$getServerDiskSpaceUsage" | cut -d ' ' -f5)
 msg_val=$serverDiskSizeUsedPercent
 echo "$msg_val"
 callBackLog $msg_val $msg
 
-msg="Server Disk Size Available"
-dots $msg
+msg_en="Server Disk Size Available"
+msg="服务器磁盘可用大小"
+dots $msg_en
 serverDiskSizeAvailable=$(echo "$getServerDiskSpaceUsage" | cut -d ' ' -f4)
 [[ $serverDiskSizeAvailable == "0" ]] && serverDiskSizeAvailable="0M"
 msg_val=$serverDiskSizeAvailable

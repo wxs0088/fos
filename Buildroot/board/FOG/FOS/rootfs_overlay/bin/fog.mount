@@ -2,13 +2,15 @@
 umount /ntfs >/dev/null 2>&1
 umount /images >/dev/null 2>&1
 umount /bcdstore >/dev/null 2>&1
-msg="Mounting File System"
-dots $msg
+msg_en="Mounting File System"
+msg="挂载文件系统"
+dots $msg_en
 if [[ ! -d /images ]]; then
     mkdir -p /images >/dev/null 2>&1
     if [[ ! $? -eq 0 ]]; then
         msg_val="Failed"
         echo "$msg_val"
+        callBackLog $msg_val $msg
         debugPause
         handleError "Failed to create location to mount nfs share ($0)\n   Args Passed: $*"
     fi
@@ -31,6 +33,7 @@ case $? in
     *)
         msg_val="Failed"
         echo "$msg_val"
+        callBackLog $msg_val $msg
         debugPause
         handleError "Could not mount images folder ($0)\n   Args Passed: $*\n    Reason: $(cat /tmp/mount-output | tr -d \\0)"
         ;;

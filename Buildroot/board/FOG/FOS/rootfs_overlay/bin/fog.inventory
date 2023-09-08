@@ -87,10 +87,14 @@ poststring="mac=${mac}&sysman=${sysman64}&sysproduct=${sysproduct64}&sysversion=
 count=0
 res=""
 while [[ -z $res ]]; do
-    dots "Attempting to send inventory"
+    msg_en="Attempting to send inventory"
+    msg="尝试发送硬件信息"
+    dots $msg_en
     res=$(curl -Lks --data "$poststring" ${web}service/inventory.php 2>/dev/null)
     if [[ $count -ge 10 ]]; then
-        echo "Failed"
+        msg_val="Failed"
+        echo "$msg_val"
+        callBackLog $msg_val $msg
         debugPause
         break
     fi
@@ -99,6 +103,8 @@ while [[ -z $res ]]; do
         usleep 2000000
     fi
 done
-echo "Done"
+msg_val="Done"
+echo "$msg_val"
+callBackLog $msg_val $msg
 debugPause
 [[ $deployed -eq 1 ]] && . /bin/fog.nonimgcomplete $mac

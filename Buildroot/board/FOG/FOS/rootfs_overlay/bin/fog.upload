@@ -12,7 +12,7 @@ disks=""
 disk=""
 hd=""
 echo " * Preparing to send image file to server"
-msg="Preparing to send image file to server"
+msg="准备将镜像文件发送到服务器"
 msg_val="T"
 callBackLog $msg_val $msg
 percent="$pct"
@@ -21,7 +21,7 @@ fog.statusreporter "$mac" "$web" & disown
 statusReporter="$!"
 prepareUploadLocation "$imagePath"
 echo " * Using Image: $img"
-msg="Using Image: $img"
+msg="使用镜像: $img"
 msg_val="T"
 callBackLog $msg_val $msg
 # resizable image type
@@ -45,8 +45,9 @@ beginUpload() {
             getPartitions "$hd"
             [[ ${#parts} -lt 1 ]] && handleError "No partitions found ($0)\n   Args Passed: $*"
             [[ $osid == @([1-2]|[4-7]|9) ]] && win7partcnt=$(echo $parts | wc -w)
-            msg="Checking for fixed partitions"
-            dots $msg
+            msg_en="Checking for fixed partitions"
+            msg="检查固定分区"
+            dots $msg_en
             part_number=0
             for part in $parts; do
                 isBitlockedPartition "$part"
@@ -65,8 +66,9 @@ beginUpload() {
             echo "$msg_val"
             callBackLog $msg_val $msg
             debugPause
-            msg="Getting Windows/Linux Partition Count"
-            dots $msg
+            msg_en="Getting Windows/Linux Partition Count"
+            msg="获取 Windows/Linux 分区数"
+            dots $msg_en
             countPartTypes "$hd" "ntfs" "ntfscnt"
             countPartTypes "$hd" "extfs" "extfscnt"
             countPartTypes "$hd" "btrfs" "btrfscnt"
@@ -76,6 +78,7 @@ beginUpload() {
             if [[ $ntfscnt -eq 0 && $extfscnt -eq 0 && $btrfscnt -eq 0 && $f2fscnt -eq 0 && $xfscnt -eq 0 ]]; then
                 msg_val="Failed"
                 echo "$msg_val"
+                callBackLog $msg_val $msg
                 debugPause
                 handleError "No resizable partitions found ($0)\n   Args Passed: $*"
             fi
@@ -84,39 +87,39 @@ beginUpload() {
             callBackLog $msg_val $msg
             debugPause
             echo " * NTFS Partition count of: $ntfscnt"
-            msg="NTFS Partition count of: $ntfscnt"
+            msg="NTFS 分区数量: $ntfscnt"
             msg_val="T"
             callBackLog $msg_val $msg
             debugPause
             echo " * EXTFS Partition count of: $extfscnt"
-            msg="EXTFS Partition count of: $extfscnt"
+            msg="EXTFS 分区数量: $extfscnt"
             msg_val="T"
             callBackLog $msg_val $msg
             debugPause
             echo " * BTRFS Partition count of: $btrfscnt"
-            msg="BTRFS Partition count of: $btrfscnt"
+            msg="BTRFS 分区数量: $btrfscnt"
             msg_val="T"
             callBackLog $msg_val $msg
             debugPause
             echo " * F2FS Partition count of: $f2fscnt"
-            msg="F2FS Partition count of: $f2fscnt"
+            msg="F2FS 分区数量: $f2fscnt"
             msg_val="T"
             callBackLog $msg_val $msg
             debugPause
             echo " * XFS Partition count of: $xfscnt"
-            msg="XFS Partition count of: $xfscnt"
+            msg="XFS 分区数量: $xfscnt"
             msg_val="T"
             callBackLog $msg_val $msg
             debugPause
             echo " * Total Partition count of: $partscnt"
-            msg="Total Partition count of: $partscnt"
+            msg="分区总数: $partscnt"
             msg_val="T"
             callBackLog $msg_val $msg
             debugPause
             case $osid in
                 [4-7]|9|50|51)
                     echo " * Setting up any additional fixed parts"
-                    msg="Setting up any additional fixed parts"
+                    msg="设置任何额外的固定部件"
                     msg_val="T"
                     callBackLog $msg_val $msg
                     part_number=0
@@ -124,8 +127,9 @@ beginUpload() {
                         getPartitionNumber "$part"
                         fsTypeSetting "$part"
                         [[ $fstype != ntfs ]] && continue
-                        msg="Mounting partition ($part)"
-                        dots $msg
+                        msg_en="Mounting partition ($part)"
+                        msg="挂载分区 ($part)"
+                        dots $msg_en
                         if [[ ! -d /bcdstore ]]; then
                             mkdir -p /bcdstore >/dev/null 2>&1
                             case $? in
@@ -134,6 +138,7 @@ beginUpload() {
                                 *)
                                     msg_val="Failed"
                                     echo "$msg_val"
+                                    callBackLog $msg_val $msg
                                     debugPause
                                     handleError " * Could not create mount location ($0->${FUNCNAME[0]})\n    Args Passed: $*"
                                     ;;
@@ -149,6 +154,7 @@ beginUpload() {
                             *)
                                 msg_val="Failed"
                                 echo "$msg_val"
+                                callBackLog $msg_val $msg
                                 debugPause
                                 handleError " * Could not mount $part ($0->${FUNCNAME[0]})\n    Args Passed: $*\n    Reason: $(cat /tmp/ntfs-mount-output | tr -d \\0)"
                                 ;;
@@ -159,7 +165,7 @@ beginUpload() {
                                 flock $hd parted -s $hd print | grep "^ *${part_number} " | grep -q "boot\|msftres\|hidden"
                                 if [[ $? -eq 0 ]]; then
                                         echo " * New fixed partition for ($part) added."
-                                        msg="New fixed partition for ($part) added."
+                                        msg="新的固定分区 ($part) 添加."
                                         msg_val="T"
                                         callBackLog $msg_val $msg
                                         fixed_size_partitions="$fixed_size_partitions:$part_number"
@@ -175,10 +181,10 @@ beginUpload() {
             # Windows 2000/XP, Vista, 7, 8, 8.1, Linux:
             #  Save unmodified partition table for download use
             #  Start filesytem type record
-            dots "Saving original partition table"
-            msg="Saving original partition table"
-            dots $msg
-            saveOriginalPartitions "$hd" "$imagePath" 1
+            msg_en="Saving original partition table"
+            msg="保存原始分区表"
+            dots $msg_en
+            saveOriginalPartitions "$hd" "$imagePath" 1 $msg
             swapuuidfilename=""
             swapUUIDFileName "$imagePath" 1
             echo -n "" > "$imagePath/d1.original.fstypes"
@@ -188,7 +194,7 @@ beginUpload() {
             callBackLog $msg_val $msg
             debugPause
             echo " * Shrinking Partitions on disk"
-            msg="Shrinking Partitions on disk"
+            msg="缩小磁盘分区"
             msg_val="T"
             callBackLog $msg_val $msg
             debugPause
@@ -201,7 +207,7 @@ beginUpload() {
             hasGPT "$hd"
             if [[ $hasgpt -eq 1 ]]; then
                 echo " * Moving Partitions on disk $hd"
-                msg="Moving Partitions on disk $hd"
+                msg="在 $hd 磁盘上移动分区"
                 msg_val="T"
                 callBackLog $msg_val $msg
                 debugPause
@@ -213,7 +219,7 @@ beginUpload() {
                 done
             fi
             echo " * Saving shrunken partition table"
-            msg="Saving shrunken partition table"
+            msg="保存缩小的分区表"
             msg_val="T"
             callBackLog $msg_val $msg
             debugPause
@@ -222,21 +228,22 @@ beginUpload() {
             savePartitionTablesAndBootLoaders "$hd" 1 "$imagePath" "$osid" "$imgPartitionType" "$sfdiskminimumpartitionfilename"
             if [[ $hasgpt -eq 1 ]]; then
                 echo " * Moving Partitions back on disk $hd"
-                msg="Moving Partitions back on disk $hd"
+                msg="在 $hd 磁盘上移动分区"
                 msg_val="T"
                 callBackLog $msg_val $msg
                 debugPause
                 applySfdiskPartitions "$hd" "$imagePath/d1.shrunken.partitions"
             fi
             echo " * Processing Hard Disk: $hd"
-            msg="Processing Hard Disk: $hd"
+            msg="处理硬盘: $hd"
             msg_val="T"
             callBackLog $msg_val $msg
             for part in $parts; do
                 savePartition "$part" 1 "$imagePath" "$imgPartitionType"
             done
-            msg="Restoring Original Partition Layout"
-            dots $msg
+            msg_en="Restoring Original Partition Layout"
+            msg="恢复原始分区布局"
+            dots $msg_en
             restoreOriginalPartitions "$hd" "$imagePath" 1
             runPartprobe "$hd"
             msg_val="Done"
@@ -254,7 +261,7 @@ beginUpload() {
             getPartitions "$hd"
             [[ ${#parts} -lt 1 ]] && handleError "No partitions found ($0)\n   Args Passed: $*"
             echo " * Processing Hard Disk: $hd"
-            msg="Processing Hard Disk: $hd"
+            msg="处理硬盘: $hd"
             msg_val="T"
             callBackLog $msg_val $msg
             debugPause
@@ -274,12 +281,12 @@ beginUpload() {
                 [[ ${#parts} -lt 1 ]] && continue
                 debugPause
                 echo " * Processing Hard Disk: $disk"
-                msg="Processing Hard Disk: $disk"
+                msg="处理硬盘: $disk"
                 msg_val="T"
                 callBackLog $msg_val $msg
                 debugPause
                 echo " * Saving disk size, partition table and boot loader information"
-                msg="Saving disk size, partition table and boot loader information"
+                msg="保存磁盘大小、分区表和引导加载程序信息"
                 msg_val="T"
                 callBackLog $msg_val $msg
                 debugPause
@@ -293,7 +300,7 @@ beginUpload() {
                     savePartition "$part" "$disk_number" "$imagePath" "$imgPartitionType"
                 done
                 echo " * Disk $disk complete"
-                msg="Disk $disk complete"
+                msg="磁盘 $disk 完成"
                 msg_val="T"
                 callBackLog $msg_val $msg
                 let disk_number+=1
@@ -311,7 +318,7 @@ beginUpload() {
 }
 findHDDInfo
 echo " * Now Upp will attempt to capture the image"
-msg="Now Upp will attempt to capture the image"
+msg="现在 Upp 将尝试捕获镜像"
 msg_val="T"
 callBackLog $msg_val $msg
 debugPause

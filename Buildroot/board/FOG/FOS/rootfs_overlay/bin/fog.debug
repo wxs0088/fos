@@ -2,7 +2,7 @@
 . /usr/share/fog/lib/funcs.sh
 clearScreen
 displayBanner
-echo " You have entered into FOG debug"
+echo " You have entered into UPP debug"
 echo " mode.  Below is a list of common"
 echo " commands you may wish to run"
 echo -e "\nfog"
@@ -27,7 +27,7 @@ echo "      MBR but GPT was not wiped properly."
 echo -e "\nreboot"
 echo "    * This will restart the computer"
 debugPause
-echo -e "\n\nBelow is a variable dump from FOG"
+echo -e "\n\nBelow is a variable dump from UPP"
 osname=""
 mbrfile=""
 defaultpart2start=""

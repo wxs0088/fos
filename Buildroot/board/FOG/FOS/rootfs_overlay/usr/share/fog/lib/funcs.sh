@@ -63,6 +63,15 @@ callBackLog()  {
     local poststring="sysuuid=${newsysuuid}&mac=${mac}&message=$msg&messageval=$msg_val"
     res=$(curl -Lks --data "$poststring" ${web}service/Post_Data.php 2>/dev/null)
 }
+
+dotTitle()  {
+    local msg_val="T"
+    local msg="$1"
+    local msg_en="${*:2}"
+    echo "$msg_en"
+    escaped_string="${msg/\*/\\*}"
+    callBackLog $msg_val $escaped_string
+}
 # Gets all system mac addresses except for loopback
 #getMACAddresses() {
 #    read ifaces <<< $(/usr/sbin/lshw -c network -json | jq -s '.[] | .logicalname' | tr -d '"' | tr '[:space:]' '|' | sed 's/[|]$//g')
@@ -82,12 +91,14 @@ getMACTypes() {
 }
 # Verifies that there is a network interface
 verifyNetworkConnection() {
-    local msg="Verifying network interface configuration"
-    dots $msg
+    local msg_en="Verifying network interface configuration"
+    msg="验证网络接口配置"
+    dots $msg_en
     local count=$(/sbin/ip addr | awk -F'[ /]+' '/global/{print $3}' | wc -l)
     if [[ -z $count || $count -lt 1 ]]; then
         local msg_val="Failed"
         echo $msg_val
+        callBackLog $msg_val $msg
         debugPause
         handleError "No network interfaces found (${FUNCNAME[0]})\n   Args Passed: $*"
     fi
@@ -181,17 +192,26 @@ enableWriteCache()  {
     wcache=$(hdparm -W $disk 2>/dev/null | tr -d '[[:space:]]' | awk -F= '/.*write-caching=/{print $2}')
     if [[ -z $wcache || $wcache == notsupported ]]; then
         echo " * Write caching not supported"
+        msg="不支持写入缓存"
+        msg_val="T"
+        callBackLog $msg_val $msg
         debugPause
         return
     fi
-    dots "Enabling write cache"
+    msg_en="Enabling write cache"
+    msg="启用写入缓存"
+    dots $msg_en
     hdparm -W1 $disk >/dev/null 2>&1
     case $? in
         0)
-            echo "Enabled"
+            msg_val="Enabled"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             ;;
         *)
-            echo "Failed"
+            msg_val="Failed"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             debugPause
             handleWarning "Could not set caching status (${FUNCNAME[0]})"
             return
@@ -214,7 +234,7 @@ expandPartition() {
     local is_fixed=$(echo $fixed | awk "/(^$part_number:|:$part_number:|:$part_number$|^$part_number$)/{print 1}")
     if [[ $is_fixed -eq 1 ]]; then
         echo " * Not expanding ($part) fixed size"
-        msg="Not expanding ($part) fixed size"
+        msg="不扩展 ($part) 的固定大小"
         msg_val="T"
         callBackLog $msg_val $msg
         debugPause
@@ -224,8 +244,9 @@ expandPartition() {
     fsTypeSetting $part
     case $fstype in
         ntfs)
-            msg="Resizing $fstype volume ($part)"
-            dots $msg
+            msg_en="Resizing $fstype volume ($part)"
+            msg="调整 $fstype 卷大小 ($part)"
+            dots $msg_en
             yes | ntfsresize $part -fbP >/tmp/tmpoutput.txt 2>&1
             case $? in
                 0)
@@ -235,6 +256,7 @@ expandPartition() {
                 *)
                     msg_val="Failed"
                     echo "$msg_val"
+                    callBackLog $msg_val $msg
                     debugPause
                     handleError "Could not resize $part (${FUNCNAME[0]})\n   Info: $(cat /tmp/tmpoutput.txt)\n   Args Passed: $*"
                     ;;
@@ -244,8 +266,9 @@ expandPartition() {
             resetFlag "$part"
             ;;
         extfs)
-            msg="Resizing $fstype volume ($part)"
-            dots $msg
+            msg_en="Resizing $fstype volume ($part)"
+            msg="调整 $fstype 卷大小 ($part)"
+            dots $msg_en
             e2fsck -fp $part >/tmp/e2fsck.txt 2>&1
             case $? in
                 0)
@@ -255,6 +278,7 @@ expandPartition() {
                     if [[ $? -gt 0 ]]; then
                         msg_val="Failed"
                         echo "$msg_val"
+                        callBackLog $msg_val $msg
                         debugPause
                         handleError "Could not check before resize (${FUNCNAME[0]})\n   Info: $(cat /tmp/e2fsck.txt)\n   Args Passed: $*"
                     fi
@@ -267,6 +291,7 @@ expandPartition() {
                 *)
                     msg_val="Failed"
                     echo "$msg_val"
+                    callBackLog $msg_val $msg
                     debugPause
                     handleError "Could not resize $part (${FUNCNAME[0]})\n   Info: $(cat /tmp/resize2fs.txt)\n   Args Passed: $*"
                     ;;
@@ -282,6 +307,7 @@ expandPartition() {
                     if [[ $? -gt 0 ]]; then
                         msg_val="Failed"
                         echo "$msg_val"
+                        callBackLog $msg_val $msg
                         debugPause
                         handleError "Could not check after resize (${FUNCNAME[0]})\n   Info: $(cat /tmp/e2fsck.txt)\n   Args Passed: $*"
                     fi
@@ -293,13 +319,15 @@ expandPartition() {
             ;;
         btrfs)
             # Based on info from @mstabrin on forums.fogproject.org
-            msg="Resizing $fstype volume ($part)"
-            dots $msg
+            msg_en="Resizing $fstype volume ($part)"
+            msg="调整 $fstype 卷大小 ($part)"
+            dots $msg_en
             if [[ ! -d /tmp/btrfs ]]; then
                 mkdir /tmp/btrfs >>/tmp/btfrslog.txt 2>&1
                 if [[ $? -gt 0 ]]; then
                     msg_val="Failed"
                     echo "$msg_val"
+                    callBackLog $msg_val $msg
                     debugPause
                     handleError "Could not create /tmp/btrfs (${FUNCNAME[0]})\n   Info: $(cat /tmp/btrfslog.txt)\n   Args Passed: $*"
                 fi
@@ -308,6 +336,7 @@ expandPartition() {
             if [[ $? -gt 0 ]]; then
                 msg_val="Failed"
                 echo "$msg_val"
+                callBackLog $msg_val $msg
                 debugPause
                 handleError "Could not mount $part to /tmp/btrfs (${FUNCNAME[0]})\n   Info: $(cat /tmp/btrfslog.txt)\n   Args Passed: $*"
             fi
@@ -315,6 +344,7 @@ expandPartition() {
             if [[ $? -gt 0 ]]; then
                 msg_val="Failed"
                 echo "$msg_val"
+                callBackLog $msg_val $msg
                 debugPause
                 handleError "Could not resize btrfs partition (${FUNCNAME[0]})\n   Info: $(cat /tmp/btrfslog.txt)\n   Args Passed: $*"
             fi
@@ -322,6 +352,7 @@ expandPartition() {
             if [[ $? -gt 0 ]]; then
                 msg_val="Failed"
                 echo "$msg_val"
+                callBackLog $msg_val $msg
                 debugPause
                 handleError "Could not unmount $part from /tmp/btrfs (${FUNCNAME[0]}\n   Info: $(cat /tmp/btrfslog.txt)\n   Args Passed: $*)"
             fi
@@ -331,12 +362,14 @@ expandPartition() {
             ;;
         f2fs)
             if [[ $type == "down" ]]; then
-                msg="Resizing $fstype volume ($part)"
-                dots $msg
+                msg_en="Resizing $fstype volume ($part)"
+                msg="调整 $fstype 卷大小 ($part)"
+                dots $msg_en
                 resize.f2fs $part >>/tmp/resize.f2fs.txt 2>&1
                 if [[ $? -gt 0 ]]; then
                     msg_val="Failed"
                     echo "$msg_val"
+                    callBackLog $msg_val $msg
                     debugPause
                     handleError "Could not expand f2fs partition (${FUNCNAME[0]})\n   Info: $(cat /tmp/resize.f2fs.txt)\n  Args Passed: $*"
                 fi
@@ -347,8 +380,9 @@ expandPartition() {
             ;;
         xfs)
             if [[ $type == "down" ]]; then
-                msg="Attempting to resize $fstype volume ($part)"
-                dots $msg
+                msg_en="Attempting to resize $fstype volume ($part)"
+                msg="尝试调整 $fstype 卷大小 ($part)"
+                dots $msg_en
                 # XFS partitions can only be expanded when there is free space after that partition.
                 # Retrieving the partition number of a XFS partition that has free space after it.
                 local xfsPartitionNumberThatCanBeExpanded=$(parted -s -a opt $disk "print free" | grep -i "free space" -B 1 | grep -i "xfs" | cut -d ' ' -f2)
@@ -358,6 +392,7 @@ expandPartition() {
                     if [[ $? -gt 0 ]]; then
                         msg_val="Failed"
                         echo "$msg_val"
+                        callBackLog $msg_val $msg
                         debugPause
                         handleError "Could not resize partition $part (${FUNCNAME[0]})\n   Info: $(cat /tmp/xfslog.txt)\n   Args Passed: $*"
                     fi
@@ -366,6 +401,7 @@ expandPartition() {
                         if [[ $? -gt 0 ]]; then
                             msg_val="Failed"
                             echo "$msg_val"
+                            callBackLog $msg_val $msg
                             debugPause
                             handleError "Could not create /tmp/xfs (${FUNCNAME[0]})\n   Info: $(cat /tmp/xfslog.txt)\n   Args Passed: $*"
                         fi
@@ -374,6 +410,7 @@ expandPartition() {
                     if [[ $? -gt 0 ]]; then
                         msg_val="Failed"
                         echo "$msg_val"
+                        callBackLog $msg_val $msg
                         debugPause
                         handleError "Could not mount $part to /tmp/xfs (${FUNCNAME[0]})\n   Info: $(cat /tmp/xfslog.txt)\n   Args Passed: $*"
                     fi
@@ -381,6 +418,7 @@ expandPartition() {
                     if [[ $? -gt 0 ]]; then
                         msg_val="Failed"
                         echo "$msg_val"
+                        callBackLog $msg_val $msg
                         debugPause
                         handleError "Could not grow XFS partition $part (${FUNCNAME[0]})\n   Info: $(cat /tmp/xfslog.txt)\n   Args Passed: $*"
                     fi
@@ -388,6 +426,7 @@ expandPartition() {
                     if [[ $? -gt 0 ]]; then
                         msg_val="Failed"
                         echo "$msg_val"
+                        callBackLog $msg_val $msg
                         debugPause
                         handleError "Could not unmount $part from /tmp/xfs (${FUNCNAME[0]})\n   Info: $(cat /tmp/xfslog.txt)\n   Args Passed: $*"
                     fi
@@ -402,7 +441,7 @@ expandPartition() {
             ;;
         *)
             echo " * Not expanding ($part -- $fstype)"
-            msg="Not expanding ($part -- $fstype)"
+            msg="不扩展 ($part -- $fstype)"
             msg_val="T"
             callBackLog $msg_val $msg
             debugPause
@@ -537,8 +576,9 @@ getServerDiskSpaceSvailable() {
 prepareUploadLocation() {
     local imagePath="$1"
     [[ -z $imagePath ]] && handleError "No image path passed (${FUNCNAME[0]})\n   Args Passed: $*"
-    msg="Preparing backup location"
-    dots $msg
+    msg_en="Preparing backup location"
+    msg="准备备份位置"
+    dots $msg_en
     if [[ ! -d $imagePath ]]; then
         mkdir -p $imagePath >/dev/null 2>&1
         case $? in
@@ -547,6 +587,7 @@ prepareUploadLocation() {
             *)
                 msg_val="Failed"
                 echo "$msg_val"
+                callBackLog $msg_val $msg
                 debugPause
                 local spaceAvailable=$(getServerDiskSpaceSvailable)
                 handleError "Failed to create image capture path (${FUNCNAME[0]})\nServer Disk Space Available: $spaceAvailable\n   Args Passed: $*"
@@ -557,8 +598,9 @@ prepareUploadLocation() {
     echo "$msg_val"
     callBackLog $msg_val $msg
     debugPause
-    msg="Setting permission on $imagePath"
-    dots $msg
+    msg_en="Setting permission on $imagePath"
+    msg="$imagePath 设置权限"
+    dots $msg_en
     chmod -R 777 $imagePath >/dev/null 2>&1
     case $? in
         0)
@@ -568,14 +610,16 @@ prepareUploadLocation() {
         *)
             msg_val="Failed"
             echo "$msg_val"
+            callBackLog $msg_val $msg
             debugPause
             handleError "Failed to set permissions (${FUNCNAME[0]})\n   Args Passed: $*"
             ;;
     esac
     callBackLog $msg_val $msg
     debugPause
-    msg="Removing any pre-existing files"
-    dots $msg
+    msg_en="Removing any pre-existing files"
+    msg="删除任何预先存在的文件"
+    dots $msg_en
     rm -Rf $imagePath/* >/dev/null 2>&1
     case $? in
         0)
@@ -585,6 +629,7 @@ prepareUploadLocation() {
         *)
             msg_val="Failed"
             echo "$msg_val"
+            callBackLog $msg_val $msg
             debugPause
             handleError "Could not clean files (${FUNCNAME[0]})\n   Args Passed: $*"
             ;;
@@ -614,6 +659,9 @@ movePartition() {
     currPartStart=$(grep "$part" $tmp_file1 | cut -d',' -f1 | awk -F'=' '{print $2}' | tr -d ' ')
     if [[ $currPartStart -gt $newStart ]]; then
         echo " * Moving $part forward to close gap between end of $prevPart and start of $part."
+        msg="向前移动 $part 以缩小 $prevPart 结尾与 $part 开头之间的间隙"
+        msg_val="T"
+        callBackLog $msg_val $msg
         debugPause
         processSfdisk "$tmp_file1" move "$part" "$newStart" > "$tmp_file2"
         if [[ $ismajordebug -gt 0 ]]; then
@@ -645,6 +693,9 @@ shrinkPartition() {
     local is_fixed=$(echo $fixed | awk "/(^$part_number:|:$part_number:|:$part_number$|^$part_number$)/{print 1}")
     if [[ $is_fixed -eq 1 ]]; then
         echo " * Not shrinking ($part) as it is detected as fixed size"
+        msg="不缩小 ($part) 因为它被检测为固定大小"
+        msg_val="T"
+        callBackLog $msg_val $msg
         debugPause
         return
     fi
@@ -669,6 +720,9 @@ shrinkPartition() {
             ntfsresize -fivP $part >/tmp/tmpoutput.txt 2>&1
             if [[ ! $? -eq 0 ]]; then
                 echo " * Not shrinking ($part) trying fixed size"
+                msg="不缩小 ($part) 尝试固定大小"
+                msg_val="T"
+                callBackLog $msg_val $msg
                 debugPause
                 echo "$(cat "$imagePath/d1.fixed_size_partitions" | tr -d \\0):${part_number}" > "$imagePath/d1.fixed_size_partitions"
                 return
@@ -681,28 +735,44 @@ shrinkPartition() {
             local sizeadd=$(calculate "${percent}/100*${size}/1024")
             sizentfsresize=$(calculate "${size}/1024+${sizeadd}")
             echo " * Possible resize partition size: ${sizentfsresize}k"
-            dots "Running resize test $part"
+            msg="可调整的分区大小: ${sizentfsresize}k"
+            msg_val="T"
+            callBackLog $msg_val $msg
+            msg_en="Running resize test $part"
+            msg="运行调整大小测试 $part"
+            dots $msg_en
             yes | ntfsresize -fns ${sizentfsresize}k ${part} >/tmp/tmpoutput.txt 2>&1
             local ntfsstatus="$?"
             tmpoutput=$(cat /tmp/tmpoutput.txt | tr -d \\0)
             test_string=$(cat /tmp/tmpoutput.txt | egrep -io "(ended successfully|bigger than the device size|volume size is already OK)" | tr -d '[[:space:]]' | tr -d \\0)
-            echo "Done"
+            msg_val="Done"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             debugPause
             rm /tmp/tmpoutput.txt >/dev/null 2>&1
             case $test_string in
                 endedsuccessfully)
                     echo " * Resize test was successful"
+                    msg="调整大小测试成功"
+                    msg_val="T"
+                    callBackLog $msg_val $msg
                     do_resizefs=1
                     do_resizepart=1
                     ntfsstatus=0
                     ;;
                 biggerthanthedevicesize)
                     echo " * Not resizing filesystem $part (part too small)"
+                    msg="未调整文件系统 $part 的大小(大小不够调整)"
+                    msg_val="T"
+                    callBackLog $msg_val $msg
                     echo "$(cat ${imagePath}/d1.fixed_size_partitions | tr -d \\0):${part_number}" > "$imagePath/d1.fixed_size_partitions"
                     ntfsstatus=0
                     ;;
                 volumesizeisalreadyOK)
                     echo " * Not resizing filesystem $part (already OK)"
+                    msg="未调整文件系统 $part (已经可以)"
+                    msg_val="T"
+                    callBackLog $msg_val $msg
                     do_resizepart=1
                     ntfsstatus=0
                     ;;
@@ -710,14 +780,20 @@ shrinkPartition() {
             [[ ! $ntfsstatus -eq 0 ]] && handleError "Resize test failed!\n    Info: $tmpoutput\n    (${FUNCNAME[0]})\n    Args Passed: $*"
             if [[ $do_resizefs -eq 1 ]]; then
                 debugPause
-                dots "Resizing filesystem"
+                msg_en="Resizing filesystem"
+                msg="调整文件系统大小"
+                dots $msg_en
                 yes | ntfsresize -fs ${sizentfsresize}k ${part} >/tmp/output.txt 2>&1
                 case $? in
                     0)
-                        echo "Done"
+                        msg_val="Done"
+                        echo "$msg_val"
+                        callBackLog $msg_val $msg
                         ;;
                     *)
-                        echo "Failed"
+                        msg_val="Failed"
+                        echo "$msg_val"
+                        callBackLog $msg_val $msg
                         debugPause
                         handleError "Could not resize disk (${FUNCNAME[0]})\n   Info: $(cat /tmp/output.txt)\n   Args Passed: $*"
                         ;;
@@ -725,7 +801,9 @@ shrinkPartition() {
             fi
             if [[ $do_resizepart -eq 1 ]]; then
                 debugPause
-                dots "Resizing partition $part"
+                msg_en="Resizing partition $part"
+                msg="调整分区大小 $part"
+                dots $msg_en
                 getPartBlockSize "$part" "part_block_size"
                 case $osid in
                     [1-2]|4)
@@ -735,7 +813,9 @@ shrinkPartition() {
                     [5-7]|9)
                         [[ $part_number -eq $win7partcnt ]] && part_start=$(blkid -po udev $part 2>/dev/null | awk -F= '/PART_ENTRY_OFFSET=/{printf("%.0f\n",$2*'$part_block_size'/1000)}') || part_start=1048576
                         if [[ -z $part_start || $part_start -lt 1 ]]; then
-                            echo "Failed"
+                            msg_val="Failed"
+                            echo "$msg_val"
+                            callBackLog $msg_val $msg
                             debugPause
                             handleError "Unable to determine disk start location (${FUNCNAME[0]})\n   Args Passed: $*"
                         fi
@@ -743,19 +823,27 @@ shrinkPartition() {
                         resizePartition "$part" "$adjustedfdsize" "$imagePath"
                         ;;
                 esac
-                echo "Done"
+                msg_val="Done"
+                echo "$msg_val"
+                callBackLog $msg_val $msg
             fi
             resetFlag "$part"
             ;;
         extfs)
-            dots "Checking $fstype volume ($part)"
+            msg_en="Checking $fstype volume ($part)"
+            msg="检查 $fstype 卷大小 ($part)"
+            dots $msg_en
             e2fsck -fp $part >/tmp/e2fsck.txt 2>&1
             case $? in
                 0)
-                    echo "Done"
+                    msg_val="Done"
+                    echo "$msg_val"
+                    callBackLog $msg_val $msg
                     ;;
                 *)
-                    echo "Failed"
+                    msg_val="Failed"
+                    echo "$msg_val"
+                    callBackLog $msg_val $msg
                     debugPause
                     handleError "e2fsck failed to check $part (${FUNCNAME[0]})\n   Info: $(cat /tmp/e2fsck.txt)\n   Args Passed: $*"
                     ;;
@@ -767,55 +855,79 @@ shrinkPartition() {
             local sizeadd=$(calculate "${percent}/100*${size}")
             sizeextresize=$(calculate "${size}+${sizeadd}")
             [[ -z $sizeextresize || $sizeextresize -lt 1 ]] && handleError "Error calculating the new size of extfs ($part) (${FUNCNAME[0]})\n   Args Passed: $*"
-            dots "Shrinking $fstype volume ($part)"
+            msg_en="Shrinking $fstype volume ($part)"
+            msg="缩小 $fstype 卷大小 ($part)"
+            dots $msg_en
             resize2fs $part -M >/tmp/resize2fs.txt 2>&1
             case $? in
                 0)
-                    echo "Done"
+                    msg_val="Done"
+                    echo "$msg_val"
+                    callBackLog $msg_val $msg
                     ;;
                 *)
-                    echo "Failed"
+                    msg_val="Failed"
+                    echo "$msg_val"
+                    callBackLog $msg_val $msg
                     debugPause
                     handleError "Could not shrink $fstype volume ($part) (${FUNCNAME[0]})\n   Info: $(cat /tmp/resize2fs.txt)\n   Args Passed: $*"
                     ;;
             esac
             debugPause
-            dots "Shrinking $part partition"
+            msg_en="Shrinking $part partition"
+            msg="缩小 $part 分区"
+            dots $msg_en
             resizePartition "$part" "$sizeextresize" "$imagePath"
-            echo "Done"
+            msg_val="Done"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             debugPause
-            dots "Checking $fstype volume ($part)"
+            msg_en="Checking $fstype volume ($part)"
+            msg="检查 $fstype 卷 ($part)"
+            dots $msg_en
             e2fsck -fp $part >/tmp/e2fsck.txt 2>&1
             case $? in
                 0)
-                    echo "Done"
+                    msg_val="Done"
+                    echo "$msg_val"
+                    callBackLog $msg_val $msg
                     ;;
                 *)
                     e2fsck -fy $part >>/tmp/e2fsck.txt 2>&1
                     if [[ $? -gt 0 ]]; then
-                        echo "Failed"
+                        msg_val="Failed"
+                        echo "$msg_val"
+                        callBackLog $msg_val $msg
                         debugPause
                         handleError "Could not check expanded volume ($part) (${FUNCNAME[0]})\n   Info: $(cat /tmp/e2fsck.txt)\n   Args Passed: $*"
                     fi
-                    echo "Done"
+                    msg_val="Done"
+                    echo "$msg_val"
+                    callBackLog $msg_val $msg
                     ;;
             esac
             ;;
         btrfs)
             # Based on info from @mstabrin on forums.fogproject.org
             # https://forums.fogproject.org/topic/15159/btrfs-postdownloadscript/3
-            dots "Shrinking $part partition"
+            msg_en="Shrinking $part partition"
+            msg="缩小 $part 分区"
+            dots $msg_en
             if [[ ! -d /tmp/btrfs ]]; then
                 mkdir /tmp/btrfs >>/tmp/btfrslog.txt 2>&1
                 if [[ $? -gt 0 ]]; then
-                    echo "Failed"
+                    msg_val="Failed"
+                    echo "$msg_val"
+                    callBackLog $msg_val $msg
                     debugPause
                     handleError "Could not create /tmp/btrfs (${FUNCNAME[0]})\n   Info: $(cat /tmp/btrfslog.txt)\n   Args Passed: $*"
                 fi
             fi
             mount -t btrfs $part /tmp/btrfs >>/tmp/btrfslog.txt 2>&1
             if [[ $? -gt 0 ]]; then
-                echo "Failed"
+                msg_val="Failed"
+                echo "$msg_val"
+                callBackLog $msg_val $msg
                 debugPause
                 handleError "Could not mount $part to /tmp/btrfs (${FUNCNAME[0]})\n   Info: $(cat /tmp/btrfslog.txt)\n   Args Passed: $*"
             fi
@@ -829,20 +941,33 @@ shrinkPartition() {
             done
             umount /tmp/btrfs >>/tmp/btrfslog.txt 2>&1
             if [[ $? -gt 0 ]]; then
-                echo "Failed"
+                msg_val="Failed"
+                echo "$msg_val"
+                callBackLog $msg_val $msg
                 debugPause
                 handleError "Could not unmount $part from /tmp/btrfs (${FUNCNAME[0]}\n   Info: $(cat /tmp/btrfslog.txt)\n   Args Passed: $*)"
             fi
-            echo "Done"
+            msg_val="Done"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             ;;
         f2fs)
             echo " * Cannot shrink F2FS partitions"
+            msg="无法收缩 F2FS 分区"
+            msg_val="T"
+            callBackLog $msg_val $msg
             ;;
         xfs)
             echo " * Cannot shrink XFS partitions"
+            msg="无法收缩 XFS 分区"
+            msg_val="T"
+            callBackLog $msg_val $msg
             ;;
         *)
             echo " * Not shrinking ($part $fstype)"
+            msg="无法收缩 ($part $fstype)"
+            msg_val="T"
+            callBackLog $msg_val $msg
             ;;
     esac
     debugPause
@@ -857,14 +982,20 @@ resetFlag() {
     fsTypeSetting "$part"
     case $fstype in
         ntfs)
-            dots "Clearing ntfs flag"
+            msg_en="Clearing ntfs flag"
+            msg="清除ntfs标志"
+            dots $msg_en
             ntfsfix -b -d $part >/dev/null 2>&1
             case $? in
                 0)
-                    echo "Done"
+                    msg_val="Done"
+                    echo "$msg_val"
+                    callBackLog $msg_val $msg
                     ;;
                 *)
-                    echo "Failed"
+                    msg_val="Failed"
+                    echo "$msg_val"
+                    callBackLog $msg_val $msg
                     ;;
             esac
             ;;
@@ -928,11 +1059,25 @@ writeImage()  {
         5|6)
             # ZSTD Compressed image.
             echo " * Imaging using Partclone (zstd)"
+            msg="使用Partclone (zstd)处理镜像"
+            msg_val="T"
+            callBackLog $msg_val $msg
+            echo " * Image Deploy is Processing"
+            msg="镜像正在部署中"
+            msg_val="T"
+            callBackLog $msg_val $msg
             zstdmt -dc </tmp/pigz1 | partclone.restore -n "Storage Location $storage, Image name $img" --ignore_crc -O ${target} -Nf 1
             ;;
         3|4)
             # Uncompressed partclone
             echo " * Imaging using Partclone (uncompressed)"
+            msg="使用Partclone (uncompressed)处理镜像"
+            msg_val="T"
+            callBackLog $msg_val $msg
+            echo " * Image Deploy is Processing"
+            msg="镜像正在部署中"
+            msg_val="T"
+            callBackLog $msg_val $msg
             cat </tmp/pigz1 | partclone.restore -n "Storage Location $storage, Image name $img" --ignore_crc -O ${target} -Nf 1
             # If this fails, try from compressed form.
             #[[ ! $? -eq 0 ]] && zstdmt -dc </tmp/pigz1 | partclone.restore --ignore_crc -O ${target} -N -f 1 || true
@@ -940,12 +1085,26 @@ writeImage()  {
         1)
             # Partimage
             echo " * Imaging using Partimage (gzip)"
+            msg="使用Partimage(gzip)处理镜像"
+            msg_val="T"
+            callBackLog $msg_val $msg
+            echo " * Image Deploy is Processing"
+            msg="镜像正在部署中"
+            msg_val="T"
+            callBackLog $msg_val $msg
             #zstdmt -dc </tmp/pigz1 | partimage restore ${target} stdin -f3 -b 2>/tmp/status.fog
             pigz -dc </tmp/pigz1 | partimage restore ${target} stdin -f3 -b 2>/tmp/status.fog
             ;;
         0|2)
             # GZIP Compressed partclone
             echo " * Imaging using Partclone (gzip)"
+            msg="使用Partclone (gzip)处理镜像"
+            msg_val="T"
+            callBackLog $msg_val $msg
+            echo " * Image Deploy is Processing"
+            msg="镜像正在部署中"
+            msg_val="T"
+            callBackLog $msg_val $msg
             #zstdmt -dc </tmp/pigz1 | partclone.restore -n "Storage Location $storage, Image name $img" --ignore_crc -O ${target} -N -f 1
             pigz -dc </tmp/pigz1 | partclone.restore -n "Storage Location $storage, Image name $img" --ignore_crc -O ${target} -N -f 1
             # If this fails, try uncompressed form.
@@ -1071,11 +1230,15 @@ changeHostname() {
     REG_HOSTNAME_KEY18="\CurrentControlSet\services\Tcpip\Parameters\Hostname"
     REG_HOSTNAME_KEY19="\CurrentControlSet\services\Tcpip\Parameters\NV HostName"
     REG_HOSTNAME_KEY20="\CurrentControlSet\services\Tcpip\Parameters\HostName"
-    dots "Mounting directory"
+    msg_en="Mounting directory"
+    msg="挂载目录"
+    dots $msg_en
     if [[ ! -d /ntfs ]]; then
         mkdir -p /ntfs >/dev/null 2>&1
         if [[ ! $? -eq 0 ]]; then
-            echo "Failed"
+            msg_val="Failed"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             debugPause
             handleError " * Could not create mount location (${FUNCNAME[0]})\n    Args Passed: $*"
         fi
@@ -1084,11 +1247,15 @@ changeHostname() {
     ntfs-3g -o remove_hiberfile,rw $part /ntfs >/tmp/ntfs-mount-output 2>&1
     case $? in
         0)
-            echo "Done"
+            msg_val="Done"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             debugPause
             ;;
         *)
-            echo "Failed"
+            msg_val="Failed"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             debugPause
             handleError " * Could not mount $part (${FUNCNAME[0]})\n    Args Passed: $*\n    Reason: $(cat /tmp/ntfs-mount-output | tr -d \\0)"
             ;;
@@ -1167,18 +1334,27 @@ changeHostname() {
         echo >> /usr/share/fog/lib/EOFREG
     fi
     if [[ -e $regfile ]]; then
-        dots "Changing hostname"
+        msg_en="Changing hostname"
+        msg="更改主机名"
+        dots $msg_en
         reged -e $regfile < /usr/share/fog/lib/EOFREG >/dev/null 2>&1
         case $? in
             [0-2])
-                echo "Done"
+                msg_val="Done"
+                echo "$msg_val"
+                callBackLog $msg_val $msg
                 debugPause
                 ;;
             *)
-                echo "Failed"
+                msg_val="Failed"
+                echo "$msg_val"
+                callBackLog $msg_val $msg
                 debugPause
                 umount /ntfs >/dev/null 2>&1
                 echo " * Failed to change hostname"
+                msg="更改主机名失败"
+                msg_val="T"
+                callBackLog $msg_val $msg
                 return
                 ;;
         esac
@@ -1288,19 +1464,25 @@ clearMountedDevices() {
             fi
             case $fstype in
                 ntfs)
-                    dots "Clearing part ($part)"
+                    msg_en="Clearing part ($part)"
+                    msg="清理部分 ($part)"
+                    dots $msg_en
                     ntfs-3g -o remove_hiberfile,rw $part /ntfs >/tmp/ntfs-mount-output 2>&1
                     case $? in
                         0)
                             ;;
                         *)
-                            echo "Failed"
+                            msg_val="Failed"
+                            echo "$msg_val"
+                            callBackLog $msg_val $msg
                             debugPause
                             handleError " * Could not mount $part (${FUNCNAME[0]})\n    Args Passed: $*\n    Reason: $(cat /tmp/ntfs-mount-output | tr -d \\0)"
                             ;;
                     esac
                     if [[ ! -f $REG_LOCAL_MACHINE_7 ]]; then
+                        msg_val="未找到注册表文件"
                         echo "Reg file not found"
+                        callBackLog "$msg_val" $msg
                         debugPause
                         umount /ntfs >/dev/null 2>&1
                         return
@@ -1308,15 +1490,21 @@ clearMountedDevices() {
                     reged -e $REG_LOCAL_MACHINE_7 </usr/share/fog/lib/EOFMOUNT >/dev/null 2>&1
                     case $? in
                         [0-2])
-                            echo "Done"
+                            msg_val="Done"
+                            echo "$msg_val"
+                            callBackLog $msg_val $msg
                             debugPause
                             umount /ntfs >/dev/null 2>&1
                             ;;
                         *)
-                            echo "Failed"
+                            msg_val="Failed"
+                            echo "$msg_val"
+                            callBackLog $msg_val $msg
                             debugPause
                             /umount /ntfs >/dev/null 2>&1
-                            echo " * Could not clear partition $part"
+                            msg="无法清除分区 $part"
+                            msg_val="T"
+                            callBackLog $msg_val $msg
                             return
                             ;;
                     esac
@@ -1338,14 +1526,18 @@ removePageFile() {
         [1-2]|4|[5-7]|[9]|50|51)
             case $fstype in
                 ntfs)
-                    dots "Mounting partition ($part)"
+                    msg_en="Mounting partition ($part)"
+                    msg="挂载分区 ($part)"
+                    dots $msg_en
                     if [[ ! -d /ntfs ]]; then
                         mkdir -p /ntfs >/dev/null 2>&1
                         case $? in
                             0)
                                 ;;
                             *)
-                                echo "Failed"
+                                msg_val="Failed"
+                                echo "$msg_val"
+                                callBackLog $msg_val $msg
                                 debugPause
                                 handleError " * Could not create mount location (${FUNCNAME[0]})\n    Args Passed: $*"
                                 ;;
@@ -1355,43 +1547,63 @@ removePageFile() {
                     ntfs-3g -o remove_hiberfile,rw $part /ntfs >/tmp/ntfs-mount-output 2>&1
                     case $? in
                         0)
-                            echo "Done"
+                            msg_val="Done"
+                            echo "$msg_val"
+                            callBackLog $msg_val $msg
                             debugPause
                             ;;
                         *)
-                            echo "Failed"
+                            msg_val="Failed"
+                            echo "$msg_val"
+                            callBackLog $msg_val $msg
                             debugPause
                             handleError " * Could not mount $part (${FUNCNAME[0]})\n    Args Passed: $*\n    Reason: $(cat /tmp/ntfs-mount-output | tr -d \\0)"
                             ;;
                     esac
                     if [[ -f /ntfs/pagefile.sys ]]; then
-                        dots "Removing page file"
+                        msg_en="Removing page file"
+                        msg="删除页面文件"
+                        dots $msg_en
                         rm -rf /ntfs/pagefile.sys >/dev/null 2>&1
                         case $? in
                             0)
-                                echo "Done"
+                                msg_val="Done"
+                                echo "$msg_val"
+                                callBackLog $msg_val $msg
                                 debugPause
                                 ;;
                             *)
-                                echo "Failed"
+                                msg_val="Failed"
+                                echo "$msg_val"
+                                callBackLog $msg_val $msg
                                 debugPause
-                                echo " * Could not delete the page file"
+                                msg="无法删除页面文件"
+                                msg_val="T"
+                                callBackLog $msg_val $msg
                                 ;;
                         esac
                     fi
                     if [[ -f /ntfs/hiberfil.sys ]]; then
-                        dots "Removing hibernate file"
+                        msg_en="Removing hibernate file"
+                        msg="删除休眠文件"
+                        dots $msg_en
                         rm -rf /ntfs/hiberfil.sys >/dev/null 2>&1
                         case $? in
                             0)
-                                echo "Done"
+                                msg_val="Done"
+                                echo "$msg_val"
+                                callBackLog $msg_val $msg
                                 debugPause
                                 ;;
                             *)
-                                echo "Failed"
+                                msg_val="Failed"
+                                echo "$msg_val"
+                                callBackLog $msg_val $msg
                                 debugPause
                                 umount /ntfs >/dev/null 2>&1
-                                echo " * Could not delete the hibernate file"
+                                msg="无法删除休眠文件"
+                                msg_val="T"
+                                callBackLog $msg_val $msg
                                 ;;
                         esac
                     fi
@@ -1580,12 +1792,14 @@ getHardDisk() {
 }
 # Finds the hard drive info and set's up the type
 findHDDInfo() {
-    msg="Looking for Hard Disk(s)"
-    dots $msg
+    msg_en="Looking for Hard Disk(s)"
+    msg="寻找硬盘"
+    dots $msg_en
     getHardDisk
     if [[ -z $hd || -z $disks ]]; then
         msg_val="Failed"
         echo "$msg_val"
+        callBackLog $msg_val $msg
         debugPause
         handleError "Could not find hard disk ($0)\n   Args Passed: $*"
     fi
@@ -1600,15 +1814,16 @@ findHDDInfo() {
                     diskSize=$(lsblk --bytes -dplno SIZE -I 3,8,9,179,259 $hd)
                     [[ $diskSize -gt 2199023255552 ]] && layPartSize="2tB"
                     echo " * Using Disk: $hd"
-                    msg="Using Disk: $hd"
+                    msg="使用磁盘: $hd"
                     msg_val="T"
                     callBackLog $msg_val $msg
                     [[ $imgType == +([nN]) ]] && validResizeOS
                     enableWriteCache "$hd"
                     ;;
                 up)
-                    msg="Reading Partition Tables"
-                    dots $msg
+                    msg_en="Reading Partition Tables"
+                    msg="读取分区表"
+                    dots $msg_en
                     if [[ $imgType == "dd" ]]; then
                         msg_val="Skipped"
                         echo "$msg_val"
@@ -1618,18 +1833,19 @@ findHDDInfo() {
                         if [[ -z $parts ]]; then
                             msg_val="Failed"
                             echo "$msg_val"
+                            callBackLog $msg_val $msg
                             debugPause
                             handleError "Could not find partitions ($0)\n    Args Passed: $*"
                         fi
                         msg_val="Done"
                         echo "$msg_val"
+                        callBackLog $msg_val $msg
                     fi
                     debugPause
                     ;;
             esac
-            callBackLog $msg_val $msg
             echo " * Using Hard Disk: $hd"
-            msg="Using Hard Disk: $hd"
+            msg="使用硬盘: $hd"
             msg_val="T"
             callBackLog $msg_val $msg
             ;;
@@ -1637,15 +1853,17 @@ findHDDInfo() {
             case $type in
                 up)
                     for disk in $disks; do
-                        msg="Reading Partition Tables on $disk"
-                        dots $msg
+                        msg_en="Reading Partition Tables on $disk"
+                        msg="读取 $disk 上的分区表"
+                        dots $msg_en
                         getPartitions "$disk"
                         if [[ -z $parts ]]; then
                             msg_val="Failed"
                             echo "$msg_val"
+                            callBackLog $msg_val $msg
                             debugPause
                             echo " * No partitions for disk $disk"
-                            msg="No partitions for disk $disk"
+                            msg="磁盘没有分区 $disk"
                             msg_val="T"
                             callBackLog $msg_val $msg
                             debugPause
@@ -1659,7 +1877,7 @@ findHDDInfo() {
             esac
             callBackLog $msg_val $msg
             echo " * Using Hard Disks: $disks"
-            msg="Using Hard Disks: $disks"
+            msg="使用硬盘: $disks"
             msg_val="T"
             callBackLog $msg_val $msg
             ;;
@@ -2192,22 +2410,30 @@ savePartitionTablesAndBootLoaders() {
             dots "$strdots"
             saveGRUB "$disk" "$disk_number" "$imagePath"
             flock $disk sfdisk -d $disk 2>/dev/null > $sfdiskfilename
-            echo "Done"
+            msg_val="Done"
+            echo "$msg_val"
+            callBackLog $msg_val $strdots
             debugPause
             [[ $have_extended_partition -ge 1 ]] && saveAllEBRs "$disk" "$disk_number" "$imagePath"
             echo "Done"
             ;;
         1)
-            dots "Saving Partition Tables (GPT)"
+            msg_en="Saving Partition Tables (GPT)"
+            msg="保存分区表 (GPT)"
+            dots $msg_en
             saveGRUB "$disk" "$disk_number" "$imagePath" "true"
             sgdisk -b "$imagePath/d${disk_number}.mbr" $disk >/dev/null 2>&1
             if [[ ! $? -eq 0 ]]; then
-                echo "Failed"
+                msg_val="Failed"
+                echo "$msg_val"
+                callBackLog $msg_val $msg
                 debugPause
                 handleError "Error trying to save GPT partition tables (${FUNCNAME[0]})\n   Args Passed: $*"
             fi
             flock $disk sfdisk -d $disk 2>/dev/null > $sfdiskfilename
-            echo "Done"
+            msg_val="Done"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             ;;
     esac
     runPartprobe "$disk"
@@ -2217,17 +2443,25 @@ clearPartitionTables() {
     local disk="$1"
     [[ -z $disk ]] && handleError "No disk passed (${FUNCNAME[0]})\n   Args Passed: $*"
     [[ $nombr -eq 1 ]] && return
-    dots "Erasing current MBR/GPT Tables"
+    msg_en="Erasing current MBR/GPT Tables"
+    msg="擦除当前 MBR/GPT 表"
+    dots $msg_en
     sgdisk -Z $disk >/dev/null 2>&1
     case $? in
         0)
-            echo "Done"
+            msg_val="Done"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             ;;
         2)
-            echo "Done, but cleared corrupted partition."
+            msg_val="Done, but cleared corrupted partition."
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             ;;
         *)
-            echo "Failed"
+            msg_val="Failed"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             debugPause
             handleError "Error trying to erase partition tables (${FUNCNAME[0]})\n   Args Passed: $*"
             ;;
@@ -2257,7 +2491,7 @@ restorePartitionTablesAndBootLoaders() {
     local strdots=""
     if [[ $nombr -eq 1 ]]; then
         echo " * Skipping partition tables and MBR"
-        msg="Skipping partition tables and MBR"
+        msg="跳过分区表和 MBR"
         msg_val="T"
         callBackLog $msg_val $msg
         debugPause
@@ -2273,13 +2507,17 @@ restorePartitionTablesAndBootLoaders() {
     getDesiredPartitionTableType "$imagePath" "$disk_number"
     majorDebugEcho "Trying to restore to $table_type partition table."
     if [[ $table_type == GPT ]]; then
-        dots "Restoring Partition Tables (GPT)"
+        msg_en="Restoring Partition Tables (GPT)"
+        msg="恢复分区表 (GPT)"
+        dots $msg_en
         restoreGRUB "$disk" "$disk_number" "$imagePath" "true"
         sgdisk -z $disk >/dev/null 2>&1
         sgdisk -gl $tmpMBR $disk >/tmp/sgdisk-gl.err 2>&1
         sgdiskexit="$?"
         if [[ ! $sgdiskexit -eq 0 ]]; then
-            echo "Failed"
+            msg_val="Failed"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             debugPause
             [[ -r /tmp/sgdisk-gl.err ]] && cat /tmp/sgdisk-gl.err
             echo "Find the detailed error message above this line. Use Shift-PageUp to scroll upwards."
@@ -2287,7 +2525,9 @@ restorePartitionTablesAndBootLoaders() {
         fi
         rm -f /tmp/sgdisk-gl.err
         global_gptcheck="yes"
-        echo "Done"
+        msg_val="Done"
+        echo "$msg_val"
+        callBackLog $msg_val $msg
     else
         case $osid in
             50|51)
@@ -2299,7 +2539,9 @@ restorePartitionTablesAndBootLoaders() {
         esac
         dots "$strdots"
         restoreGRUB "$disk" "$disk_number" "$imagePath"
-        echo "Done"
+        msg_val="Done"
+        echo "$msg_val"
+        callBackLog $msg_val $strdots
         debugPause
         majorDebugShowCurrentPartitionTable "$disk" "$disk_number"
         majorDebugPause
@@ -2310,29 +2552,44 @@ restorePartitionTablesAndBootLoaders() {
         sfdiskPartitionFileName "$imagePath" "$disk_number"
         sfdiskLegacyOriginalPartitionFileName "$imagePath" "$disk_number"
         if [[ -r $sfdiskoriginalpartitionfilename ]]; then
-            dots "Inserting Extended partitions (Original)"
+            msg_en="Inserting Extended partitions (Original)"
+            msg="插入扩展分区（原始）"
+            dots $msg_en
             flock $disk sfdisk $disk < $sfdiskoriginalpartitionfilename >/dev/null 2>&1
             case $? in
                 0)
-                    echo "Done"
+                    msg_val="Done"
+                    echo "$msg_val"
+                    callBackLog $msg_val $msg
                     ;;
                 *)
-                    echo "Failed"
+                    msg_val="Failed"
+                    echo "$msg_val"
+                    callBackLog $msg_val $msg
                     ;;
             esac
         elif [[ -e $sfdisklegacyoriginalpartitionfilename ]]; then
-            dots "Inserting Extended partitions (Legacy)"
+            msg_en="Inserting Extended partitions (Legacy)"
+            msg="插入扩展分区（旧版）"
+            dots $msg_en
             flock $disk sfdisk $disk < $sfdisklegacyoriginalpartitionfilename >/dev/null 2>&1
             case $? in
                 0)
-                    echo "Done"
+                    msg_val="Done"
+                    echo "$msg_val"
+                    callBackLog $msg_val $msg
                     ;;
                 *)
-                    echo "Failed"
+                    msg_val="Failed"
+                    echo "$msg_val"
+                    callBackLog $msg_val $msg
                     ;;
             esac
         else
             echo " * No extended partitions"
+            msg="没有扩展分区"
+            msg_val="T"
+            callBackLog $msg_val $msg
         fi
     fi
     debugPause
@@ -2359,6 +2616,9 @@ savePartition() {
         return
     fi
     echo " * Processing Partition: $part ($part_number)"
+    msg="处理分区: $part ($part_number)"
+    msg_val="T"
+    callBackLog $msg_val $msg
     debugPause
     fsTypeSetting "$part"
     getPartType "$part"
@@ -2367,12 +2627,21 @@ savePartition() {
     case $fstype in
         swap)
             echo " * Saving swap partition UUID"
+            msg="保存交换分区 UUID"
+            msg_val="T"
+            callBackLog $msg_val $msg
             swapUUIDFileName "$imagePath" "$disk_number"
             saveSwapUUID "$swapuuidfilename" "$part"
             ;;
         imager)
             echo " * Using partclone.$fstype"
+            msg="使用命令 partclone.$fstype"
+            msg_val="T"
+            callBackLog $msg_val $msg
             debugPause
+            msg="正在捕获镜像中"
+            msg_val="T"
+            callBackLog $msg_val $msg
             imgpart="$imagePath/d${disk_number}p${part_number}.img"
             uploadFormat "$fifoname" "$imgpart"
             partclone.$fstype -n "Storage Location $storage, Image name $img" -cs $part -O $fifoname -Nf 1
@@ -2381,6 +2650,9 @@ savePartition() {
                 0)
                     mv ${imgpart}.000 $imgpart >/dev/null 2>&1
                     echo " * Image Captured"
+                    msg="镜像已捕获"
+                    msg_val="T"
+                    callBackLog $msg_val $msg
                     debugPause
                     ;;
                 *)
@@ -2393,13 +2665,22 @@ savePartition() {
             case $parttype in
                 0x5|0xf)
                     echo " * Not capturing content of extended partition"
+                    msg="不捕获扩展分区的内容"
+                    msg_val="T"
+                    callBackLog $msg_val $msg
                     debugPause
                     EBRFileName "$imagePath" "$disk_number" "$part_number"
                     touch "$ebrfilename"
                     ;;
                 *)
                     echo " * Using partclone.$fstype"
+                    msg="使用命令 partclone.$fstype"
+                    msg_val="T"
+                    callBackLog $msg_val $msg
                     debugPause
+                    msg="正在捕获镜像中"
+                    msg_val="T"
+                    callBackLog $msg_val $msg
                     imgpart="$imagePath/d${disk_number}p${part_number}.img"
                     uploadFormat "$fifoname" "$imgpart"
                     partclone.$fstype -n "Storage Location $storage, Image name $img" -cs $part -O $fifoname -Nf 1 -a0
@@ -2408,6 +2689,9 @@ savePartition() {
                         0)
                             mv ${imgpart}.000 $imgpart >/dev/null 2>&1
                             echo " * Image Captured"
+                            msg="镜像已捕获"
+                            msg_val="T"
+                            callBackLog $msg_val $msg
                             debugPause
                             ;;
                         *)
@@ -2435,6 +2719,9 @@ restorePartition() {
     [[ -z $imagePath ]] && handleError "No image path passed (${FUNCNAME[0]})\n   Args Passed: $*"
     if [[ $imgPartitionType != all && $imgPartitionType != $part_number ]]; then
         echo " * Skipping partition: $part ($part_number)"
+        msg="跳过分区: $part ($part_number)"
+        msg_val="T"
+        callBackLog $msg_val $msg
         debugPause
         return
     fi
@@ -2449,6 +2736,9 @@ restorePartition() {
     getDiskFromPartition "$part" "$israw"
     getPartitionNumber "$part"
     echo " * Processing Partition: $part ($part_number)"
+    msg="处理分区: $part ($part_number)"
+    msg_val="T"
+    callBackLog $msg_val $msg
     debugPause
     case $imgType in
         dd)
@@ -2507,7 +2797,7 @@ restorePartition() {
     ls $imgpart >/dev/null 2>&1
     if [[ ! $? -eq 0 ]]; then
         EBRFileName "$imagePath" "$disk_number" "$part_number"
-        [[ -e $ebrfilename ]] && echo " * Not deploying content of extended partition" || echo " * Partition File Missing: $imgpart"
+        [[ -e $ebrfilename ]] && dotTitle "不部署扩展分区的内容" " * Not deploying content of extended partition" || dotTitle "分区文件丢失:$imgpart" " * Partition File Missing: $imgpart"
         runPartprobe "$disk"
         return
     fi
@@ -2519,14 +2809,20 @@ runFixparts() {
     local disk="$1"
     [[ -z $disk ]] && handleError "No disk passed (${FUNCNAME[0]})\n   Args Passed: $*"
     echo
-    dots "Attempting fixparts"
+    msg_en="Attempting fixparts"
+    msg="尝试修复部分"
+    dots $msg_en
     fixparts $disk </usr/share/fog/lib/EOFFIXPARTS >/dev/null 2>&1
     case $? in
         0)
-            echo "Done"
+            msg_val="Done"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             ;;
         *)
-            echo "Failed"
+            msg_val="Failed"
+            echo "$msg_val"
+            callBackLog $msg_val $msg
             debugPause
             handleError "Could not fix partition layout (${FUNCNAME[0]})\n   Args Passed: $*" "yes"
             ;;
@@ -2535,14 +2831,14 @@ runFixparts() {
     runPartprobe "$disk"
 }
 killStatusReporter() {
-    dots "Stopping FOG Status Reporter"
+#    dots "Stopping FOG Status Reporter"
     kill -9 $statusReporter >/dev/null 2>&1
     case $? in
         0)
-            echo "Done"
+#            echo "Done"
             ;;
         *)
-            echo "Failed"
+#            echo "Failed"
             ;;
     esac
     debugPause
@@ -2560,7 +2856,7 @@ prepareResizeDownloadPartitions() {
     [[ -z $imgPartitionType ]] && handleError "No image partition type  passed (${FUNCNAME[0]})\n   Args Passed: $*"
     if [[ $nombr -eq 1 ]]; then
         echo -e " * Skipping partition preperation\n"
-        msg="Skipping partition preperation"
+        msg="跳过分区准备"
         msg_val="T"
         callBackLog $msg_val $msg
         debugPause
@@ -2570,11 +2866,13 @@ prepareResizeDownloadPartitions() {
     local do_fill=0
     fillDiskWithPartitionsIsOK "$disk" "$imagePath" "$disk_number"
     majorDebugEcho "Filling disk = $do_fill"
-    msg="Attempting to expand/fill partitions"
-    dots $msg
+    msg_en="Attempting to expand/fill partitions"
+    msg="尝试扩展/填充分区"
+    dots $msg_en
     if [[ $do_fill -eq 0 ]]; then
         msg_val="Failed"
         echo "$msg_val"
+        callBackLog $msg_val $msg
         debugPause
         handleError "Fatal Error: Could not resize partitions (${FUNCNAME[0]})\n   Args Passed: $*"
     fi
@@ -2618,9 +2916,15 @@ performRestore() {
         done
         restoreparts=""
         echo " * Resetting UUIDs for $disk"
+        msg="为 $disk 重置 UUID"
+        msg_val="T"
+        callBackLog $msg_val $msg
         debugPause
         restoreUUIDInformation "$disk" "$sfdiskoriginalpartitionfilename" "$disk_number" "$imagePath"
         echo " * Resetting swap systems"
+        msg="重置交换系统"
+        msg_val="T"
+        callBackLog $msg_val $msg
         debugPause
         makeAllSwapSystems "$disk" "$disk_number" "$imagePath" "$imgPartitionType"
         let disk_number+=1
