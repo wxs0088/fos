@@ -39,7 +39,7 @@ case $mc in
 esac
 debugPause
 verifyNetworkConnection
-msg_en="Checking Operating System"
+msg_en="检查操作系统"
 msg="检查操作系统"
 dots $msg_en
 [[ -z $deployed ]] && determineOS "$osid"
