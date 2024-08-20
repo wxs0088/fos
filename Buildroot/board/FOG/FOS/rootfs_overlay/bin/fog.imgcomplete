@@ -52,4 +52,28 @@ done
 msg_val="Done"
 echo "$msg_val"
 callBackLog $msg_val $msg
+
+sign="success"
+upp_url=$(echo $web | sed 's/:8089\/fog\//:8000/')
+api_path="/api/notice/send_massage"
+
+msg_en="Sending API Request"
+msg="发送API请求"
+dots $msg_en
+
+api_url="$upp_url$api_path?mac=$mac&sign=$sign&img=$img&task_type=$type"
+echo "${api_url}"
+api_res=$(curl -Lks -v "${api_url}" 2>/dev/null)
+
+message=$(echo $api_res | jq -r '.message')
+
+
+# 检查接口请求的响应
+if [[ $message -eq "OK" ]]; then
+    echo "API Request Sent Successfully"
+else
+    echo "Failed to Send API Request"
+    printf " * Error returned: %s" "$api_res"
+fi
+
 debugPause
